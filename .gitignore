@@ -24,8 +24,11 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
 .env
+.env.local
+.env.production
+.env.development
+.env.test
 
 # vercel
 .vercel
@@ -38,3 +41,8 @@ next-env.d.ts
 /prisma/seed-data/
 
 seed_neon.py
+
+node_modules/
+.next/
+
+npm-debug.log*
