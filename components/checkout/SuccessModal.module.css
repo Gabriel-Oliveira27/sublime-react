@@ -1,0 +1,54 @@
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10000; padding: 20px;
+  animation: fadeIn .3s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  background: white;
+  border-radius: var(--r-xl);
+  padding: 2.5rem 2rem;
+  max-width: 520px; width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  animation: slideUp .4s var(--ease-out);
+}
+@keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.animWrap { margin-bottom: 1.5rem; display: flex; justify-content: center; }
+
+.message {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; }
+
+.btnPix, .btnWa, .btnClose {
+  padding: .75rem 1.5rem;
+  border-radius: var(--r-md);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-base);
+  text-decoration: none;
+  display: inline-flex; align-items: center; gap: .5rem;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+}
+.btnPix  { background: var(--rose); color: white; }
+.btnPix:hover { background: var(--rose-light); transform: translateY(-2px); }
+.btnWa   { background: #25D366; color: white; }
+.btnWa:hover { background: #128C7E; transform: translateY(-2px); }
+.btnClose { background: #6c757d; color: white; }
+.btnClose:hover { background: #5a6268; transform: translateY(-2px); }
+
+@media (max-width: 480px) {
+  .modal { padding: 2rem 1.25rem; }
+  .btnPix, .btnWa, .btnClose { width: 100%; justify-content: center; }
+}

@@ -1,0 +1,26 @@
+.menu {
+  position: fixed;
+  top: 0; left: -280px;
+  width: 280px; height: 100vh;
+  background: var(--surface);
+  box-shadow: 4px 0 40px rgba(26,18,24,.12);
+  z-index: 600;
+  transition: left var(--t-slow) var(--ease-out);
+  padding-top: var(--sp-16);
+  border-right: 1px solid var(--border);
+}
+.menu.open { left: 0; }
+
+.item {
+  padding: var(--sp-4) var(--sp-6);
+  display: flex; align-items: center; gap: var(--sp-4);
+  color: var(--text-primary); cursor: pointer;
+  transition: all var(--t-fast);
+  font-weight: 500; font-size: .95rem;
+  border-bottom: 1px solid var(--border);
+}
+.item:hover {
+  background: var(--rose-blush);
+  color: var(--accent);
+  padding-left: var(--sp-8);
+}

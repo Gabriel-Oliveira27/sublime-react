@@ -1,0 +1,28 @@
+{
+  "name": "sublime",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.8.0",
+    "csv-parse": "^6.2.1",
+    "dotenv": "^17.4.2",
+    "next": "^15.5.18",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.41",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.18",
+    "prisma": "^7.8.0",
+    "tsx": "^4.22.1"
+  }
+}

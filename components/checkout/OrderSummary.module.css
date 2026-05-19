@@ -1,0 +1,84 @@
+.summary {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: calc(var(--header-h) + 16px);
+  max-height: calc(100vh - var(--header-h) - 40px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.summary h2 {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  padding-bottom: .75rem;
+  border-bottom: 2px solid var(--accent);
+}
+
+.items {}
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.item:last-child { border-bottom: none; }
+.itemInfo h4 { font-size: .95rem; color: var(--text-primary); margin-bottom: .25rem; font-family: 'DM Sans', sans-serif; font-weight: 600; }
+.itemInfo p { font-size: .85rem; color: var(--text-secondary); }
+.itemPrice { font-weight: 600; color: var(--accent); white-space: nowrap; margin-left: 1rem; }
+
+.coupon {
+  margin: 1.5rem 0;
+  padding: 1.5rem 0;
+  border-top: 2px solid var(--border);
+  border-bottom: 2px solid var(--border);
+}
+.couponLabel {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .85rem; font-weight: 600; margin-bottom: .5rem; color: var(--text-secondary);
+}
+.couponRow { display: flex; gap: .5rem; }
+.couponRow .form-input { flex: 1; }
+.couponBtn {
+  padding: 0 1.1rem;
+  height: 44px;
+  background: var(--accent); color: white;
+  border: none; border-radius: var(--r-md);
+  font-weight: 600; font-size: .875rem;
+  cursor: pointer; transition: all var(--t-base);
+  white-space: nowrap; flex-shrink: 0;
+  font-family: 'DM Sans', sans-serif;
+}
+.couponBtn:hover:not(:disabled) { background: var(--lavender); }
+.couponBtn:disabled { opacity: .6; cursor: not-allowed; }
+.couponBtnRemove {
+  padding: 0 1rem;
+  height: 44px;
+  background: transparent; color: var(--error);
+  border: 1.5px solid var(--error); border-radius: var(--r-md);
+  font-weight: 600; font-size: .82rem;
+  cursor: pointer; transition: all var(--t-base);
+  white-space: nowrap; flex-shrink: 0;
+  font-family: 'DM Sans', sans-serif;
+}
+.couponBtnRemove:hover { background: var(--error); color: white; }
+.couponMsg {
+  display: flex; align-items: center; gap: .4rem;
+  margin-top: .6rem; padding: .6rem .75rem;
+  border-radius: var(--r-sm); font-size: .84rem;
+}
+.couponOk { background: rgba(45,158,107,.1); color: var(--success); border: 1px solid var(--success); }
+.couponErr { background: rgba(220,38,38,.1);  color: var(--error);   border: 1px solid var(--error); }
+
+.totals { margin-top: 1.5rem; }
+.row { display: flex; justify-content: space-between; padding: .6rem 0; font-size: .95rem; color: var(--text-secondary); }
+.total { font-size: 1.25rem; padding-top: 1rem; border-top: 2px solid var(--border); margin-top: .5rem; color: var(--accent); }
+
+@media (max-width: 1024px) {
+  .summary { position: static; max-height: none; }
+}

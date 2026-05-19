@@ -1,0 +1,48 @@
+.footer {
+  background: var(--text-primary);
+  color: rgba(255,255,255,.7);
+  padding: var(--sp-16) var(--sp-6) var(--sp-8);
+  margin-top: auto;
+}
+.content {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sp-10);
+}
+.section h3 {
+  font-family: 'DM Serif Display', serif;
+  color: white;
+  font-size: 1.05rem;
+  font-weight: 400;
+  margin-bottom: var(--sp-5);
+  position: relative;
+  padding-bottom: var(--sp-3);
+}
+.section h3::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 32px; height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+.section p,
+.section a {
+  color: rgba(255,255,255,.6);
+  display: block;
+  margin-bottom: var(--sp-2);
+  font-size: .875rem;
+  transition: color var(--t-fast);
+}
+.section a:hover { color: white; }
+.bottom {
+  max-width: var(--max-w);
+  margin: var(--sp-10) auto 0;
+  padding-top: var(--sp-6);
+  border-top: 1px solid rgba(255,255,255,.1);
+  text-align: center;
+  color: rgba(255,255,255,.35);
+  font-size: .8rem;
+}

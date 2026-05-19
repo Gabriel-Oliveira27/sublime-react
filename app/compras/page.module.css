@@ -1,0 +1,220 @@
+.hero {
+  background: linear-gradient(135deg, var(--rose) 0%, var(--lavender) 100%);
+  color: white;
+  padding: 4rem 1.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+.hero p { font-size: 1.2rem; opacity: .95; }
+
+/* Search float */
+.searchFloat {
+  max-width: 900px;
+  margin: -3rem auto 3rem;
+  padding: 0 1.5rem;
+  position: relative;
+  z-index: 10;
+}
+.searchCard {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.searchIconWrap {
+  width: 60px; height: 60px;
+  background: linear-gradient(135deg, var(--rose) 0%, var(--lavender) 100%);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.searchIconSvg { color: white; }
+.products h4, .timeline h4 {
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .95rem; margin-bottom: .75rem; font-weight: 600;
+}
+.products h4 svg, .timeline h4 svg { color: var(--accent); }
+.searchCard h3 { font-size: 1.5rem; color: var(--text-primary); margin-bottom: .25rem; }
+.searchCard p  { font-size: .95rem; color: var(--text-secondary); }
+
+.searchForm {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.inputGroup {
+  flex: 1;
+  min-width: 280px;
+  display: flex;
+  gap: .75rem;
+}
+.searchInput {
+  flex: 1;
+  padding: .875rem 1.25rem;
+  border: 2px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-family: 'DM Sans', sans-serif;
+  transition: all var(--t-base);
+}
+.searchInput:focus { outline: none; border-color: var(--accent); background: white; }
+.btnSearch {
+  padding: .875rem 1.75rem;
+  border-radius: var(--r-md);
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all var(--t-base);
+  display: flex; align-items: center; gap: .5rem;
+  border: none; cursor: pointer;
+  white-space: nowrap;
+}
+.btnSearch:hover { background: var(--lavender); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(232,77,130,.4); }
+.btnClear {
+  padding: .875rem 1.5rem;
+  border-radius: var(--r-md);
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  border: 2px solid var(--border);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--t-base);
+  font-family: 'DM Sans', sans-serif;
+}
+.btnClear:hover { background: var(--error); color: white; border-color: var(--error); }
+
+/* Results */
+.results {
+  flex: 1;
+  max-width: 1400px;
+  margin: 0 auto 4rem;
+  padding: 0 1.5rem;
+  width: 100%;
+  min-height: 400px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 4rem 1.5rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+.emptyState h3 { font-size: 1.5rem; color: var(--text-primary); }
+.emptyState p  { max-width: 500px; }
+.retryBtn { margin-top: .5rem; height: 44px; border-radius: var(--r-full); }
+
+/* Grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 2rem;
+}
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.5rem;
+  transition: all var(--t-base);
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--rose) 0%, var(--lavender) 100%);
+}
+.card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); border-color: var(--accent); }
+
+.cardHeader {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 1.5rem; padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.orderNum { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+.status {
+  padding: .5rem 1rem;
+  border-radius: 20px;
+  font-size: .85rem;
+  font-weight: 600;
+}
+.statusPending    { background: #fff3cd; color: #856404; }
+.statusSeparating { background: #cce5ff; color: #004085; }
+.statusPreparing  { background: #e7d4f8; color: #5a287d; }
+.statusShipping   { background: #d4edda; color: #155724; }
+.statusDelivered  { background: #a8e6cf; color: #1e5631; }
+
+.products { margin-bottom: 1.5rem; }
+.products h4 { font-size: .95rem; margin-bottom: .75rem; font-weight: 600; }
+.productItem {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: .5rem 0; font-size: .9rem; color: var(--text-secondary);
+  border-bottom: 1px dashed var(--border);
+}
+.productItem:last-child { border-bottom: none; }
+.productName { flex: 1; color: var(--text-primary); }
+.productQty  { color: var(--text-secondary); margin-left: 1rem; }
+
+.orderTotal {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 1rem; border-top: 2px solid var(--border);
+  font-size: 1.2rem; font-weight: 700;
+  color: var(--accent);
+}
+.orderTotal span:first-child { color: var(--text-primary); }
+
+.timeline { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+.timeline h4 { font-size: .95rem; margin-bottom: 1rem; font-weight: 600; }
+
+.timelineStep {
+  display: flex; align-items: flex-start; gap: .75rem;
+  margin-bottom: .75rem; position: relative;
+}
+.timelineStep:not(:last-child)::before {
+  content: ''; position: absolute;
+  left: 9px; top: 20px; width: 2px;
+  height: calc(100% + .75rem);
+  background: var(--border);
+}
+.dot {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--surface-muted); border: 2px solid var(--border);
+  flex-shrink: 0; margin-top: 2px;
+}
+.timelineActive .dot {
+  background: var(--accent); border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(232,77,130,.2);
+}
+.timelineContent { flex: 1; }
+.timelineTitle { font-size: .9rem; font-weight: 600; color: var(--text-secondary); }
+.timelineActive .timelineTitle { color: var(--accent); }
+
+@media (max-width: 768px) {
+  .hero p { font-size: 1rem; }
+  .searchFloat { margin: -2rem auto 2rem; }
+  .searchCard { flex-direction: column; text-align: center; padding: 1.5rem; }
+  .searchForm { flex-direction: column; }
+  .inputGroup { flex-direction: column; min-width: 100%; }
+  .grid { grid-template-columns: 1fr; gap: 1.5rem; }
+}
