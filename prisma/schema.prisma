@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "library"
 }
 
 datasource db {
@@ -87,4 +88,18 @@ model Cliente {
   cpf     String   @unique
   compras String[]
   contato String
+}
+
+model Usuario {
+  id      Int     @id @default(autoincrement())
+  nome    String
+  apelido String
+  email   String  @unique
+  senha   String
+  ativo   Boolean @default(true)
+}
+
+model Config {
+  chave String @id
+  valor String
 }
