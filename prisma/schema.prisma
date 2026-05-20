@@ -88,3 +88,36 @@ model Cliente {
   compras String[]
   contato String
 }
+
+model Usuario {
+  id      Int     @id @default(autoincrement())
+  nome    String
+  apelido String
+  email   String  @unique
+  senha   String
+  ativo   Boolean @default(true)
+}
+
+model Config {
+  chave String @id
+  valor String
+}
+
+// ── USUARIO E CONFIG (adicionado pelo organizar_api.py) ──
+// ─────────────────────────────────────────────────────────────
+// ADICIONAR ao prisma/schema.prisma (junto dos outros models)
+// ─────────────────────────────────────────────────────────────
+
+model Usuario {
+  id      Int     @id @default(autoincrement())
+  nome    String
+  apelido String
+  email   String  @unique
+  senha   String
+  ativo   Boolean @default(true)
+}
+
+model Config {
+  chave String @id
+  valor String
+}

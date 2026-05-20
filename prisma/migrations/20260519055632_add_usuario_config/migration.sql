@@ -1,0 +1,22 @@
+-- CreateTable
+CREATE TABLE "Usuario" (
+    "id" SERIAL NOT NULL,
+    "nome" TEXT NOT NULL,
+    "apelido" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "senha" TEXT NOT NULL,
+    "ativo" BOOLEAN NOT NULL DEFAULT true,
+
+    CONSTRAINT "Usuario_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Config" (
+    "chave" TEXT NOT NULL,
+    "valor" TEXT NOT NULL,
+
+    CONSTRAINT "Config_pkey" PRIMARY KEY ("chave")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Usuario_email_key" ON "Usuario"("email");
