@@ -89,6 +89,6 @@ Entre em contato:
 
 <div align="center">
 
-Feito com 🌸 em Iguatu, CE &nbsp;·&nbsp; Sublime © 2025
+Feito em Iguatu, CE &nbsp;·&nbsp; Sublime © 2025-2026
 
 </div>
