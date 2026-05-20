@@ -11,13 +11,14 @@ const patchSchema = z.object({
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await autenticar(req)
   if (auth instanceof NextResponse) return auth
 
-  const id = parseInt(params.id)
-  if (isNaN(id)) {
+  const { id } = await params
+  const idNum = parseInt(id)
+  if (isNaN(idNum)) {
     return NextResponse.json({ erro: 'ID inválido' }, { status: 400 })
   }
 
@@ -33,7 +34,7 @@ export async function PATCH(
     }
 
     const produto = await prisma.estoque.update({
-      where: { id },
+      where: { id: idNum },
       data:  parsed.data,
     })
 
@@ -46,18 +47,19 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await autenticar(req)
   if (auth instanceof NextResponse) return auth
 
-  const id = parseInt(params.id)
-  if (isNaN(id)) {
+  const { id } = await params
+  const idNum = parseInt(id)
+  if (isNaN(idNum)) {
     return NextResponse.json({ erro: 'ID inválido' }, { status: 400 })
   }
 
   try {
-    await prisma.estoque.delete({ where: { id } })
+    await prisma.estoque.delete({ where: { id: idNum } })
     return NextResponse.json({ sucesso: true })
   } catch (err) {
     console.error('[DELETE /api/estoque/:id]', err)
