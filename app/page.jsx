@@ -125,8 +125,6 @@ export default function StorePage() {
       <div className={styles.layout}>
         {/* Products area (left) */}
         <div className={styles.productsArea}>
-          <FilterSidebar products={allProducts} onFiltersChange={handleFilters} />
-
           <div className={styles.productsHeader}>
             <h2>Produtos</h2>
             <span className={styles.count}>
@@ -171,6 +169,9 @@ export default function StorePage() {
             </div>
           )}
         </div>
+
+        {/* Filter sidebar — irmão direto de productsArea para sticky funcionar */}
+        <FilterSidebar products={allProducts} onFiltersChange={handleFilters} />
       </div>
 
       {modalGroup && (

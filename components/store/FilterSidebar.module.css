@@ -64,6 +64,7 @@
   color: var(--text-secondary);
   width: 100%;
   transition: all var(--t-base);
+  order: 0;
 }
 .mobileToggle:hover { border-color: var(--accent); color: var(--accent); }
 .mobileSidebar { margin-bottom: var(--sp-4); }
@@ -79,6 +80,8 @@
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
   order: 2;
+  z-index: 10;
+  align-self: flex-start;
 }
 
 @media (max-width: 960px) {
