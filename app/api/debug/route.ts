@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 
+
 export async function GET() {
   const url = process.env.DATABASE_URL ?? 'UNDEFINED'
   return NextResponse.json({
