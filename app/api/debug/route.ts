@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 
 export async function GET() {
+  const url = process.env.DATABASE_URL ?? 'UNDEFINED'
   return NextResponse.json({
-    hasUrl: !!process.env.DATABASE_URL,
-    hasJwt: !!process.env.JWT_SECRET,
-    urlStart: process.env.DATABASE_URL?.slice(0, 20) ?? 'VAZIO',
+    hasUrl:   url !== 'UNDEFINED',
+    length:   url.length,
+    start:    url.slice(0, 40),
+    end:      url.slice(-20),
   })
 }
