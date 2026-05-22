@@ -2,69 +2,46 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { autenticar } from '@/lib/middleware'
 
-// GET — admin autenticado: lista todos os pedidos
 export async function GET(req: NextRequest) {
   const auth = await autenticar(req)
   if (auth instanceof NextResponse) return auth
 
   try {
-    const pedidos = await prisma.pedido.findMany({
-      orderBy: { dataCompra: 'desc' },
-    })
-    return NextResponse.json(pedidos)
+    const cupons = await prisma.cupom.findMany({ orderBy: { id: 'asc' } })
+    return NextResponse.json(cupons)
   } catch (err) {
-    console.error('[GET /api/pedidos]', err)
+    console.error('[GET /api/cupons]', err)
     return NextResponse.json({ erro: 'Erro interno' }, { status: 500 })
   }
 }
 
-// POST — público: cliente finaliza compra no checkout
 export async function POST(req: NextRequest) {
+  const auth = await autenticar(req)
+  if (auth instanceof NextResponse) return auth
+
   try {
     const body = await req.json()
-    const { customer, items, delivery, payment, coupon, total } = body
+    const { cupom, desconto, quantidadeUsos } = body
 
-    if (!customer?.name || !items?.length || !delivery?.type || !payment?.method) {
-      return NextResponse.json({ erro: 'Dados obrigatórios ausentes' }, { status: 400 })
+    if (!cupom || !desconto || quantidadeUsos == null) {
+      return NextResponse.json({ erro: 'Campos obrigatórios: cupom, desconto, quantidadeUsos' }, { status: 400 })
     }
 
-    // Gera idRastreio sequencial no formato VD-001
-    const ultimo = await prisma.pedido.findFirst({ orderBy: { id: 'desc' } })
-    const seq    = (ultimo?.id ?? 0) + 1
-    const idRastreio = `VD-${String(seq).padStart(3, '0')}`
-
-    // Monta endereço consolidado
-    const endereco = delivery.address ?? delivery.type
-
-    // Decrementa estoque de cada item
-    for (const item of items) {
-      await prisma.estoque.update({
-        where: { id: item.id },
-        data:  { qtd: { decrement: item.qty ?? 1 } },
-      })
-    }
-
-    // Cria o pedido
-    const pedido = await prisma.pedido.create({
+    const novo = await prisma.cupom.create({
       data: {
-        idRastreio,
-        nome:            customer.name,
-        contato:         customer.phone ?? customer.cpf ?? '',
-        pedido:          items,
-        endereco,
-        totalVenda:      total,
-        metodoPagamento: payment.method.toUpperCase() as any,
-        cupom:           coupon || null,
-        frete:           delivery.frete ?? 0,
-        parcelas:        payment.installments ?? 1,
-        trocoPara:       payment.changeFor ? parseFloat(payment.changeFor) : null,
+        cupom:          String(cupom).toUpperCase().trim(),
+        desconto:       String(desconto).trim(),
+        quantidadeUsos: Number(quantidadeUsos),
       },
     })
-
-    return NextResponse.json({ success: true, orderId: pedido.idRastreio }, { status: 201 })
-  } catch (err) {
-    console.error('[POST /api/pedidos]', err)
-    return NextResponse.json({ erro: 'Erro ao registrar pedido' }, { status: 500 })
+    return NextResponse.json(novo, { status: 201 })
+  } catch (err: any) {
+    // P2002 = unique constraint (código duplicado)
+    if (err?.code === 'P2002') {
+      return NextResponse.json({ erro: 'Já existe um cupom com esse código' }, { status: 409 })
+    }
+    console.error('[POST /api/cupons]', err)
+    return NextResponse.json({ erro: 'Erro interno' }, { status: 500 })
   }
 }
 
@@ -73,7 +50,7 @@ export async function OPTIONS() {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
+      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type,Authorization',
     },
   })

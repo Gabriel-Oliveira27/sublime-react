@@ -10,25 +10,46 @@ import { applyCPFMask } from '@/lib/utils';
 import styles from './page.module.css';
 
 /* ── helpers ── */
-const TIMELINE_STEPS = ['Reservado','Em separação','Preparando para entrega','Saiu para entrega','Entregue'];
+// Etapas lineares exibidas na timeline (Cancelado é tratado à parte)
+const TIMELINE_STEPS = ['Reservado', 'Confirmado', 'Em separação', 'Saiu para entrega', 'Entregue'];
+
+// Mapa das etapas do banco (enum EtapaPedido) para o índice da timeline
 const STAGE_IDX = {
-  'reservado':0,'em separacao':1,'separacao':1,'separacao de pedidos':1,
-  'preparando para entrega':2,'preparando':2,'preparacao':2,
-  'saiu para entrega':3,'em rota':3,'em entrega':3,
-  'entregue':4,'finalizado':4,'concluido':4,
+  'RESERVADO':          0,
+  'CONFIRMADO':         1,
+  'EM_PREPARO':         2,
+  'SAIU_PARA_ENTREGA':  3,
+  'ENTREGUE':           4,
+  'CANCELADO':         -1, // fora da timeline linear
 };
-function buildTimeline(raw) {
-  const key = String(raw||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const idx = STAGE_IDX[key]??0;
-  return TIMELINE_STEPS.map((step,i)=>({step, active: i<=idx}));
+
+// Rótulos de exibição para cada etapa do banco
+const ETAPA_LABELS = {
+  'RESERVADO':         'Reservado',
+  'CONFIRMADO':        'Confirmado',
+  'EM_PREPARO':        'Em separação',
+  'SAIU_PARA_ENTREGA': 'Saiu para entrega',
+  'ENTREGUE':          'Entregue',
+  'CANCELADO':         'Cancelado',
+};
+
+function buildTimeline(etapa) {
+  const idx = STAGE_IDX[etapa] ?? 0;
+  if (etapa === 'CANCELADO') {
+    return TIMELINE_STEPS.map(step => ({ step, active: false, cancelled: true }));
+  }
+  return TIMELINE_STEPS.map((step, i) => ({ step, active: i <= idx }));
 }
+
 function mapStatus(etapa) {
-  const e = String(etapa||'').toLowerCase();
-  if (e.includes('entreg'))                        return 'delivered';
-  if (e.includes('separ')||e.includes('carga'))    return 'separating';
-  if (e.includes('prepara'))                       return 'preparing';
-  if (e.includes('saiu')||e.includes('rota'))      return 'shipping';
-  return 'pending';
+  switch (etapa) {
+    case 'ENTREGUE':          return 'delivered';
+    case 'EM_PREPARO':        return 'separating';
+    case 'CONFIRMADO':        return 'confirmed';
+    case 'SAIU_PARA_ENTREGA': return 'shipping';
+    case 'CANCELADO':         return 'cancelled';
+    default:                  return 'pending';
+  }
 }
 function parseProducts(raw) {
   if (Array.isArray(raw)) return raw.map(p=>typeof p==='object'
@@ -45,15 +66,19 @@ function normaliseOrders(raw) {
   return raw.map(o=>({
     vdNumber:   String(o.vd||o.id||o.idRastreio||o['Id rastreio']||'').trim(),
     status:     mapStatus(o.etapa||o.status||''),
-    statusText: String(o.etapa||o.status||'').trim(),
+    statusText: ETAPA_LABELS[o.etapa] || String(o.etapa||o.status||'').trim(),
     products:   parseProducts(o.pedido||o.order||o.items||''),
     total:      Number(o.total||o['Total da venda']||o.valor||0)||0,
     timeline:   buildTimeline(o.etapa||o.status||''),
   }));
 }
 const STATUS_CLS = {
-  pending:styles.statusPending, separating:styles.statusSeparating,
-  preparing:styles.statusPreparing, shipping:styles.statusShipping, delivered:styles.statusDelivered,
+  pending:    styles.statusPending,
+  confirmed:  styles.statusConfirmed,
+  separating: styles.statusSeparating,
+  shipping:   styles.statusShipping,
+  delivered:  styles.statusDelivered,
+  cancelled:  styles.statusCancelled,
 };
 
 /* ── component ── */
@@ -100,7 +125,7 @@ export default function ComprasPage() {
 
   return (
     <>
-      <Header backHref="/" backLabel="← Voltar" showSearch={false}/>
+      <Header backHref="/" backLabel="← Voltar" showSearch={false} showCart={false}/>
 
       <section className={styles.hero}>
         <PackageSearchIcon size={80} color="white"/>
