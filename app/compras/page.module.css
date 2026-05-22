@@ -218,3 +218,6 @@
   .inputGroup { flex-direction: column; min-width: 100%; }
   .grid { grid-template-columns: 1fr; gap: 1.5rem; }
 }
+
+.statusConfirmed  { background: #d1ecf1; color: #0c5460; }
+.statusCancelled  { background: #f8d7da; color: #721c24; }

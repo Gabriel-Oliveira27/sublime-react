@@ -1,15 +1,6 @@
-// ═══════════════════════════════════════════════════════
-//  ROTA: /api/pedidos
-//  GET  — admin (JWT) → lista todos os pedidos (painel admin)
-//  POST — público     → cria novo pedido ao finalizar o checkout
-//                       gera idRastreio (VD-001, VD-002…)
-//                       decrementa estoque de cada item
-//                       faz upsert do Cliente pelo CPF
-// ═══════════════════════════════════════════════════════
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { autenticar } from '@/lib/middleware'
-
 
 export async function GET(req: NextRequest) {
   const auth = await autenticar(req)
@@ -24,7 +15,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Mapeia os valores que o front envia para os enums do Prisma
 function toMetodoPagamento(method: string): 'PIX' | 'DINHEIRO' | 'CREDITO' {
   const m = method.toUpperCase()
   if (m === 'PIX')      return 'PIX'
@@ -42,12 +32,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ erro: 'Dados obrigatórios ausentes' }, { status: 400 })
     }
 
-    // ── idRastreio: busca o maior número VD-XXX existente e incrementa ──
-    const ultimoPedido = await prisma.pedido.findFirst({ orderBy: { id: 'desc' } })
-    const seq          = (ultimoPedido?.id ?? 0) + 1
-    const idRastreio   = `VD-${String(seq).padStart(3, '0')}`
+    const cpfLimpo = customer.cpf?.replace(/\D/g, '') || null
 
-    // ── Decrementa estoque de cada item ──────────────────────────────────
+    // ── Decrementa estoque ────────────────────────────────────────────────
     for (const item of items) {
       await prisma.estoque.update({
         where: { id: Number(item.id) },
@@ -55,20 +42,18 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // ── Calcula valorALevar para pagamento em Dinheiro ───────────────────
+    // ── Calcula troco ─────────────────────────────────────────────────────
     const changeFor   = payment.changeFor ? parseFloat(String(payment.changeFor)) : null
     const valorALevar = (changeFor && changeFor > 0) ? +(changeFor - total).toFixed(2) : null
 
-    // ── contato: prioriza CPF limpo; cai para telefone se CPF ausente ─────
-    const cpfLimpo = customer.cpf?.replace(/\D/g, '') || ''
-    const contato  = cpfLimpo || customer.phone || ''
-
-    // ── Cria o pedido ─────────────────────────────────────────────────────
+    // ── Cria pedido com idRastreio placeholder e atualiza com o id real ───
+    // Assim VD-001 sempre corresponde ao id=1 na tabela, sem race conditions.
     const pedido = await prisma.pedido.create({
       data: {
-        idRastreio,
+        idRastreio:      '__TEMP__',
         nome:            customer.name,
-        contato,
+        contato:         customer.phone || '',   // sempre o telefone
+        cpf:             cpfLimpo,               // CPF separado, opcional
         pedido:          items,
         endereco:        delivery.address ?? delivery.type,
         totalVenda:      total,
@@ -81,27 +66,26 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    const idRastreio = `VD-${String(pedido.id).padStart(3, '0')}`
+    await prisma.pedido.update({
+      where: { id: pedido.id },
+      data:  { idRastreio },
+    })
+
     // ── Upsert do Cliente pelo CPF (não-crítico) ──────────────────────────
     if (cpfLimpo) {
       try {
         await prisma.cliente.upsert({
           where:  { cpf: cpfLimpo },
-          create: {
-            nome:    customer.name,
-            cpf:     cpfLimpo,
-            contato: customer.phone || '',
-            compras: [idRastreio],
-          },
-          update: {
-            compras: { push: idRastreio },
-          },
+          create: { nome: customer.name, cpf: cpfLimpo, contato: customer.phone || '', compras: [idRastreio] },
+          update: { compras: { push: idRastreio } },
         })
       } catch (clienteErr) {
         console.warn('[POST /api/pedidos] upsert cliente falhou (não-crítico):', clienteErr)
       }
     }
 
-    return NextResponse.json({ success: true, orderId: pedido.idRastreio }, { status: 201 })
+    return NextResponse.json({ success: true, orderId: idRastreio }, { status: 201 })
   } catch (err: any) {
     console.error('[POST /api/pedidos]', err)
     return NextResponse.json({ erro: err.message ?? 'Erro ao registrar pedido' }, { status: 500 })
