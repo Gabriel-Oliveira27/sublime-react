@@ -30,17 +30,26 @@ export async function POST(
 
     if (pedido.etapa === 'CANCELADO') {
       return NextResponse.json(
-        { erro: 'Este pedido já foi cancelado e não pode ser devolvido novamente.' },
+        { erro: 'Este pedido já foi cancelado.' },
         { status: 400 }
       )
     }
 
-    // Campo "pedido" (Json) armazena os itens: [{id, qty, name, price, ...}]
+    /**
+     * Estrutura real do campo "pedido" (Json), vinda do CartContext da loja:
+     *   {
+     *     id:         string   — ID do estoque como string (ex: "5")
+     *     descricao:  string   — nome do produto
+     *     quantity:   number   — quantidade pedida
+     *     valor:      number   — preço unitário
+     *     cores:      string | null
+     *     imagem:     string | null
+     *     qtd:        number   — estoque disponível no momento da compra
+     *   }
+     */
     const itens = pedido.pedido as Array<{
-      id:          number
-      qty?:        number
-      qtd?:        number
-      quantidade?: number
+      id:       string | number
+      quantity: number
     }>
 
     if (!Array.isArray(itens) || itens.length === 0) {
@@ -50,18 +59,20 @@ export async function POST(
       )
     }
 
-    // Restaura o estoque de cada item em paralelo
+    // Restaura o estoque de cada item em paralelo.
+    // id vem como string do cart ("5") → parseInt obrigatório para o Prisma.
     await Promise.all(
       itens.map(item => {
-        const qty = item.qty ?? item.qtd ?? item.quantidade ?? 1
+        const estoqueId = parseInt(String(item.id))
+        const qty       = parseInt(String(item.quantity)) || 1
         return prisma.estoque.update({
-          where: { id: item.id },
+          where: { id: estoqueId },
           data:  { qtd: { increment: qty } },
         })
       })
     )
 
-    // Marca o pedido como CANCELADO (etapa final)
+    // Marca o pedido como CANCELADO
     const pedidoAtualizado = await prisma.pedido.update({
       where: { id: idNum },
       data:  { etapa: 'CANCELADO' },
