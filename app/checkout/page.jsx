@@ -31,6 +31,7 @@ export default function CheckoutPage() {
   const { items, isEmpty, clear } = useCart();
   const { showToast }             = useToast();
   const router                    = useRouter();
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   /* KEY FIX: prevent the isEmpty→redirect from firing after order is placed */
   const orderPlacedRef = useRef(false);
@@ -243,7 +244,54 @@ export default function CheckoutPage() {
 
   return (
     <>
-      <Header backHref="/" backLabel="← Voltar" showSearch={false} />
+      <Header
+        backLabel="← Voltar para a loja"
+        showSearch={false}
+        showCart={false}
+        onBackClick={() => setShowExitConfirm(true)}
+      />
+
+      {/* ── Modal confirmação de saída ───────────────────────────── */}
+      {showExitConfirm && (
+        <div style={{
+          position:'fixed',inset:0,zIndex:9999,
+          background:'rgba(26,18,24,.55)',backdropFilter:'blur(4px)',
+          display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'
+        }}>
+          <div style={{
+            background:'var(--surface)',borderRadius:'var(--r-xl)',
+            padding:'2rem',maxWidth:'360px',width:'100%',
+            boxShadow:'0 20px 60px rgba(26,18,24,.25)',
+            border:'1px solid var(--border)',textAlign:'center'
+          }}>
+            <div style={{fontSize:'2.5rem',marginBottom:'1rem'}}>🛒</div>
+            <h3 style={{marginBottom:'.5rem',color:'var(--text-primary)'}}>Sair do checkout?</h3>
+            <p style={{color:'var(--text-secondary)',fontSize:'.9rem',marginBottom:'1.5rem',lineHeight:1.5}}>
+              Seu carrinho será mantido, mas o progresso desta etapa será perdido.
+            </p>
+            <div style={{display:'flex',gap:'.75rem',justifyContent:'center'}}>
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                style={{
+                  padding:'.6rem 1.25rem',borderRadius:'var(--r-md)',
+                  border:'1.5px solid var(--border)',background:'var(--surface-muted)',
+                  color:'var(--text-primary)',fontWeight:600,cursor:'pointer',fontSize:'.9rem'
+                }}>
+                Continuar comprando
+              </button>
+              <button
+                onClick={() => router.push('/')}
+                style={{
+                  padding:'.6rem 1.25rem',borderRadius:'var(--r-md)',
+                  border:'none',background:'var(--accent)',
+                  color:'white',fontWeight:600,cursor:'pointer',fontSize:'.9rem'
+                }}>
+                Sair
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <StepIndicator currentStep={step} />
 
       <main className={styles.main}>

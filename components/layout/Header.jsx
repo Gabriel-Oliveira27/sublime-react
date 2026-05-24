@@ -3,8 +3,25 @@ import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import styles from './Header.module.css';
 
-export default function Header({ onMenuToggle, showSearch = true, showCart = true, backHref, backLabel }) {
+export default function Header({
+  onMenuToggle,
+  showSearch = true,
+  showCart   = true,
+  backHref,
+  backLabel,
+  onBackClick,   // quando fornecido, substitui a navegação do botão "voltar"
+}) {
   const { totalItems, toggleSidebar } = useCart();
+
+  const backButton = onBackClick ? (
+    <button className={styles.backBtn} onClick={onBackClick}>
+      {backLabel || '← Voltar'}
+    </button>
+  ) : backHref ? (
+    <Link href={backHref} className={styles.backBtn}>
+      {backLabel || '← Voltar'}
+    </Link>
+  ) : null;
 
   return (
     <header className={styles.header}>
@@ -15,9 +32,7 @@ export default function Header({ onMenuToggle, showSearch = true, showCart = tru
               <path d="M3 10h18M3 5h18M3 15h18"/>
             </svg>
           </button>
-        ) : backHref ? (
-          <Link href={backHref} className={styles.backBtn}>{backLabel || '← Voltar'}</Link>
-        ) : null}
+        ) : backButton}
 
         <Link href="/" className={styles.logo}>Sublime</Link>
 
