@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CONFIG } from '@/lib/config';
 import { formatDateBR } from '@/lib/utils';
@@ -11,11 +11,19 @@ import styles from './SuccessModal.module.css';
 export default function SuccessModal({ orderId, paymentMethod, deliveryType, pickupDate, pickupTime, onClose }) {
   const router        = useRouter();
   const { showToast } = useToast();
+  const [pixKey, setPixKey] = useState(CONFIG.API.PIX_KEY); // fallback hardcoded enquanto carrega
 
+  // Busca a chave PIX atualizada do banco ao abrir o modal
   useEffect(() => {
     document.body.style.overflow = 'hidden';
+    if (paymentMethod === 'PIX') {
+      fetch(`${CONFIG.API.VERCEL_URL}/api/config/pix`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data?.chave) setPixKey(data.chave); })
+        .catch(() => {/* mantém fallback */});
+    }
     return () => { document.body.style.overflow = ''; };
-  }, []);
+  }, [paymentMethod]);
 
   const isPickup = deliveryType === 'retirada';
   const dateStr  = pickupDate ? `${pickupTime} do dia ${formatDateBR(pickupDate)}` : '';
@@ -36,10 +44,10 @@ export default function SuccessModal({ orderId, paymentMethod, deliveryType, pic
   const waUrl        = `https://wa.me/${CONFIG.API.WHATSAPP_NUMBER}?text=${encodeURIComponent(`Olá! Pedido ${orderId}`)}`;
 
   const copyPix = () => {
-    navigator.clipboard.writeText(CONFIG.API.PIX_KEY)
+    navigator.clipboard.writeText(pixKey)
       .then(() => showToast('Chave PIX copiada!', 'success'))
       .catch(() => {
-        const ta = Object.assign(document.createElement('textarea'), { value: CONFIG.API.PIX_KEY });
+        const ta = Object.assign(document.createElement('textarea'), { value: pixKey });
         document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
         showToast('Chave PIX copiada!', 'success');
       });
@@ -57,10 +65,14 @@ export default function SuccessModal({ orderId, paymentMethod, deliveryType, pic
           <CheckSuccessAnimation size={100}/>
         </div>
 
-        <div
-          className={styles.message}
-          dangerouslySetInnerHTML={{ __html: getMessage() }}
-        />
+        <div className={styles.message} dangerouslySetInnerHTML={{ __html: getMessage() }}/>
+
+        {showPIX && (
+          <div className={styles.pixKeyBox}>
+            <span className={styles.pixKeyLabel}>Chave PIX</span>
+            <span className={styles.pixKeyValue}>{pixKey}</span>
+          </div>
+        )}
 
         <div className={styles.actions}>
           {showPIX && (
