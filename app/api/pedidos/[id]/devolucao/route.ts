@@ -36,20 +36,16 @@ export async function POST(
     }
 
     /**
-     * Estrutura real do campo "pedido" (Json), vinda do CartContext da loja:
-     *   {
-     *     id:         string   — ID do estoque como string (ex: "5")
-     *     descricao:  string   — nome do produto
-     *     quantity:   number   — quantidade pedida
-     *     valor:      number   — preço unitário
-     *     cores:      string | null
-     *     imagem:     string | null
-     *     qtd:        number   — estoque disponível no momento da compra
-     *   }
+     * Estrutura real do campo "pedido" (Json) — montada em checkout/page.jsx:
+     *   { id: string, descricao: string, cores: string, qty: number }
+     *
+     * Atenção: item.id vem como STRING do CartContext ("5", não 5).
+     *          item.qty é a quantidade pedida (não item.quantity).
      */
     const itens = pedido.pedido as Array<{
       id:       string | number
-      quantity: number
+      qty:      number
+      descricao?: string
     }>
 
     if (!Array.isArray(itens) || itens.length === 0) {
@@ -59,12 +55,11 @@ export async function POST(
       )
     }
 
-    // Restaura o estoque de cada item em paralelo.
-    // id vem como string do cart ("5") → parseInt obrigatório para o Prisma.
+    // Restaura o estoque de cada item em paralelo
     await Promise.all(
       itens.map(item => {
-        const estoqueId = parseInt(String(item.id))
-        const qty       = parseInt(String(item.quantity)) || 1
+        const estoqueId = parseInt(String(item.id))   // string → Int
+        const qty       = parseInt(String(item.qty)) || 1
         return prisma.estoque.update({
           where: { id: estoqueId },
           data:  { qtd: { increment: qty } },
@@ -72,7 +67,6 @@ export async function POST(
       })
     )
 
-    // Marca o pedido como CANCELADO
     const pedidoAtualizado = await prisma.pedido.update({
       where: { id: idNum },
       data:  { etapa: 'CANCELADO' },

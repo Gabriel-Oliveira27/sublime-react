@@ -32,28 +32,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ erro: 'Dados obrigatórios ausentes' }, { status: 400 })
     }
 
-    const cpfLimpo = customer.cpf?.replace(/\D/g, '') || null
-
-    // ── Decrementa estoque ────────────────────────────────────────────────
+    // ── Valida e decrementa estoque item a item ───────────────────────────
+    // Converte id para number — o CartContext serializa como string
     for (const item of items) {
+      const prodId = Number(item.id)
+      const qty    = Number(item.qty ?? 1)
+
+      const prod = await prisma.estoque.findUnique({ where: { id: prodId } })
+
+      if (!prod) {
+        return NextResponse.json(
+          { erro: `Produto não encontrado (id=${prodId}). Recarregue a página e tente novamente.` },
+          { status: 409 }
+        )
+      }
+
+      if (prod.qtd < qty) {
+        return NextResponse.json(
+          { erro: `Estoque insuficiente para "${prod.produto}". Disponível: ${prod.qtd}.` },
+          { status: 409 }
+        )
+      }
+
       await prisma.estoque.update({
-        where: { id: Number(item.id) },
-        data:  { qtd: { decrement: Number(item.qty ?? 1) } },
+        where: { id: prodId },
+        data:  { qtd: { decrement: qty } },
       })
     }
 
-    // ── Calcula troco ─────────────────────────────────────────────────────
+    // ── Cria pedido com placeholder e atualiza com id real (VD-001 = id 1) ─
+    const cpfLimpo    = customer.cpf?.replace(/\D/g, '') || null
     const changeFor   = payment.changeFor ? parseFloat(String(payment.changeFor)) : null
     const valorALevar = (changeFor && changeFor > 0) ? +(changeFor - total).toFixed(2) : null
 
-    // ── Cria pedido com idRastreio placeholder e atualiza com o id real ───
-    // Assim VD-001 sempre corresponde ao id=1 na tabela, sem race conditions.
     const pedido = await prisma.pedido.create({
       data: {
         idRastreio:      '__TEMP__',
         nome:            customer.name,
-        contato:         customer.phone || '',   // sempre o telefone
-        cpf:             cpfLimpo,               // CPF separado, opcional
+        contato:         customer.phone || '',
+        cpf:             cpfLimpo,
         pedido:          items,
         endereco:        delivery.address ?? delivery.type,
         totalVenda:      total,
@@ -67,10 +84,7 @@ export async function POST(req: NextRequest) {
     })
 
     const idRastreio = `VD-${String(pedido.id).padStart(3, '0')}`
-    await prisma.pedido.update({
-      where: { id: pedido.id },
-      data:  { idRastreio },
-    })
+    await prisma.pedido.update({ where: { id: pedido.id }, data: { idRastreio } })
 
     // ── Upsert do Cliente pelo CPF (não-crítico) ──────────────────────────
     if (cpfLimpo) {
@@ -80,8 +94,8 @@ export async function POST(req: NextRequest) {
           create: { nome: customer.name, cpf: cpfLimpo, contato: customer.phone || '', compras: [idRastreio] },
           update: { compras: { push: idRastreio } },
         })
-      } catch (clienteErr) {
-        console.warn('[POST /api/pedidos] upsert cliente falhou (não-crítico):', clienteErr)
+      } catch (e) {
+        console.warn('[POST /api/pedidos] upsert cliente falhou (não-crítico):', e)
       }
     }
 

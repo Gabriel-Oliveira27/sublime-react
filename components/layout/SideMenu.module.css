@@ -24,3 +24,22 @@
   color: var(--accent);
   padding-left: var(--sp-8);
 }
+
+.closeBtn {
+  position: absolute;
+  top: var(--sp-4);
+  right: var(--sp-4);
+  width: 36px; height: 36px;
+  border-radius: var(--r-full);
+  background: var(--surface-muted);
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.closeBtn:hover {
+  background: var(--rose-blush);
+  border-color: var(--rose);
+  color: var(--accent);
+}
