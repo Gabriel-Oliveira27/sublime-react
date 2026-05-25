@@ -91,12 +91,14 @@ model Cliente {
 }
 
 model Usuario {
-  id      Int     @id @default(autoincrement())
-  nome    String
-  apelido String
-  email   String  @unique
-  senha   String
-  ativo   Boolean @default(true)
+  id         Int      @id @default(autoincrement())
+  nome       String
+  apelido    String
+  email      String   @unique
+  senha      String
+  ativo      Boolean  @default(true)
+  isAdmin    Boolean  @default(false)
+  permissoes Json?
 }
 
 model Config {
