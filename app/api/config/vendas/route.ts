@@ -3,45 +3,75 @@ import { prisma } from '@/lib/prisma'
 import { autenticar } from '@/lib/middleware'
 import { z } from 'zod'
 
-const createSchema = z.object({
-  produto: z.string().min(1),
-  linha:   z.enum(['FREEZER','AQUECER','CONSERVAR','PREPARAR','SERVIR','ARMAZENAR']),
-  litros:  z.string().default(''),
-  cores:   z.string().default(''),
-  qtd:     z.number().int().min(0),
-  valor:   z.number().min(0),
-  imagem:  z.string().default(''),
-  filtros: z.string().default(''),
+const schema = z.object({
+  pix:      z.string().optional(),
+  whatsapp: z.string().optional(),
 })
 
-export async function GET() {
+const KEYS = { pix: 'PIX_KEY', whatsapp: 'WHATSAPP' }
+
+export async function GET(req: NextRequest) {
+  const auth = await autenticar(req)
+  if (auth instanceof NextResponse) return auth
+
   try {
-    const estoque = await prisma.estoque.findMany({ orderBy: { produto: 'asc' } })
-    return NextResponse.json(estoque)
+    const configs = await prisma.config.findMany({
+      where: { chave: { in: Object.values(KEYS) } },
+    })
+    const map = Object.fromEntries(configs.map(c => [c.chave, c.valor]))
+    return NextResponse.json({
+      pix:      map[KEYS.pix]      ?? '',
+      whatsapp: map[KEYS.whatsapp] ?? '',
+    })
   } catch (err) {
-    console.error('[GET /api/estoque]', err)
+    console.error('[GET /api/config/vendas]', err)
     return NextResponse.json({ erro: 'Erro interno' }, { status: 500 })
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function PATCH(req: NextRequest) {
   const auth = await autenticar(req)
   if (auth instanceof NextResponse) return auth
 
   try {
     const body   = await req.json()
-    const parsed = createSchema.safeParse(body)
+    const parsed = schema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json(
-        { erro: 'Dados inválidos', detalhes: parsed.error.flatten() },
-        { status: 400 }
-      )
+      return NextResponse.json({ erro: 'Dados inválidos' }, { status: 400 })
     }
 
-    const item = await prisma.estoque.create({ data: parsed.data })
-    return NextResponse.json(item, { status: 201 })
+    const updates = []
+    if (parsed.data.pix !== undefined) {
+      updates.push(prisma.config.upsert({
+        where:  { chave: KEYS.pix },
+        update: { valor: parsed.data.pix },
+        create: { chave: KEYS.pix, valor: parsed.data.pix },
+      }))
+    }
+    if (parsed.data.whatsapp !== undefined) {
+      updates.push(prisma.config.upsert({
+        where:  { chave: KEYS.whatsapp },
+        update: { valor: parsed.data.whatsapp },
+        create: { chave: KEYS.whatsapp, valor: parsed.data.whatsapp },
+      }))
+    }
+
+    await Promise.all(updates)
+    return NextResponse.json({ sucesso: true })
   } catch (err) {
-    console.error('[POST /api/estoque]', err)
+    console.error('[PATCH /api/config/vendas]', err)
     return NextResponse.json({ erro: 'Erro interno' }, { status: 500 })
   }
+}
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin':  process.env.DASHBOARD_ORIGIN ?? '*',
+      'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+      'Access-Control-Allow-Credentials': 'true',
+    },
+  })
 }
