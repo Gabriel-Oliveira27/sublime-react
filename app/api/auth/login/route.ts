@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { signJwt } from '@/lib/jwt'
+import { COOKIE_OPTIONS } from '@/lib/middleware'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
@@ -13,13 +14,11 @@ export async function POST(req: NextRequest) {
   try {
     const body   = await req.json()
     const parsed = schema.safeParse(body)
-
     if (!parsed.success) {
       return NextResponse.json({ erro: 'Dados inválidos' }, { status: 400 })
     }
 
     const { email, senha } = parsed.data
-
     const usuario = await prisma.usuario.findUnique({
       where: { email: email.toLowerCase().trim() },
     })
@@ -34,32 +33,30 @@ export async function POST(req: NextRequest) {
     }
 
     const token = await signJwt({
-      id:      usuario.id,
-      nome:    usuario.nome,
-      apelido: usuario.apelido,
+      id:         usuario.id,
+      nome:       usuario.nome,
+      apelido:    usuario.apelido,
+      isAdmin:    usuario.isAdmin,
+      // JsonValue → cast para o tipo esperado pelo JwtPayload
+      permissoes: (usuario.permissoes ?? null) as Record<string, { ver: boolean; editar: boolean }> | null,
     })
 
-    return NextResponse.json({
-      token,
+    const res = NextResponse.json({
       usuario: {
-        id:      usuario.id,
-        nome:    usuario.nome,
-        apelido: usuario.apelido,
+        id:         usuario.id,
+        nome:       usuario.nome,
+        apelido:    usuario.apelido,
+        foto:       usuario.foto  ?? null,
+        isAdmin:    usuario.isAdmin,
+        permissoes: usuario.permissoes ?? null,
       },
     })
+
+    // Cookie httpOnly — o token JWT nunca é acessível pelo JavaScript
+    res.headers.set('Set-Cookie', `sublime_auth=${token}; ${COOKIE_OPTIONS}`)
+    return res
   } catch (err) {
     console.error('[POST /api/auth/login]', err)
     return NextResponse.json({ erro: 'Erro interno' }, { status: 500 })
   }
-}
-
-export async function OPTIONS() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    },
-  })
 }

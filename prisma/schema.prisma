@@ -52,14 +52,14 @@ model Estoque {
   valor   Decimal @db.Decimal(10, 2)
   linha   Linha
   imagem  String
-  filtros String
+  filtros String  @default("")
 }
 
 model Cupom {
-  id             Int     @id @default(autoincrement())
-  cupom          String  @unique
+  id             Int    @id @default(autoincrement())
+  cupom          String @unique
   desconto       String
-  quantidadeUsos Int     @default(0)
+  quantidadeUsos Int    @default(0)
 }
 
 model Pedido {
@@ -67,10 +67,10 @@ model Pedido {
   idRastreio      String          @unique
   nome            String
   contato         String
-  cpf             String?
   pedido          Json
   endereco        String
   totalVenda      Decimal         @db.Decimal(10, 2)
+  subtotal        Decimal         @db.Decimal(10, 2) @default(0)
   metodoPagamento MetodoPagamento
   pagamento       StatusPagamento @default(PENDENTE)
   etapa           EtapaPedido     @default(RESERVADO)
@@ -91,12 +91,16 @@ model Cliente {
 }
 
 model Usuario {
-  id      Int     @id @default(autoincrement())
-  nome    String
-  apelido String
-  email   String  @unique
-  senha   String
-  ativo   Boolean @default(true)
+  id         Int      @id @default(autoincrement())
+  nome       String
+  apelido    String
+  email      String   @unique
+  senha      String
+  ativo      Boolean  @default(true)
+  isAdmin    Boolean  @default(false)
+  permissoes Json?    // { estoque:{ver,editar}, pedidos:{ver,editar}, cupons:{ver,editar}, config:{ver,editar}, usuarios:{ver,editar} }
+  foto       String?  // URL da foto (Cloudinary)
+  criadoEm   DateTime @default(now())
 }
 
 model Config {
