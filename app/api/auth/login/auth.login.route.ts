@@ -11,7 +11,7 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const body   = await req.json()
+    const body = await req.json()
     const parsed = schema.safeParse(body)
 
     if (!parsed.success) {
@@ -34,9 +34,11 @@ export async function POST(req: NextRequest) {
     }
 
     const token = await signJwt({
-      id:      usuario.id,
-      nome:    usuario.nome,
-      apelido: usuario.apelido,
+      id:         usuario.id,
+      nome:       usuario.nome,
+      apelido:    usuario.apelido,
+      isAdmin:    usuario.isAdmin,
+      permissoes: usuario.permissoes,
     })
 
     return NextResponse.json({
