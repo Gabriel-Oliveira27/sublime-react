@@ -83,11 +83,12 @@ model Pedido {
 }
 
 model Cliente {
-  id      Int      @id @default(autoincrement())
-  nome    String
-  cpf     String   @unique
-  compras String[]
-  contato String
+  id        Int      @id @default(autoincrement())
+  nome      String
+  cpf       String   @unique
+  compras   String[]
+  contato   String
+  enderecos String[] @default([])
 }
 
 model Usuario {
