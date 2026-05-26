@@ -66,12 +66,18 @@ export async function POST(req: NextRequest) {
     // Lê o maior VD-XXX existente e incrementa atomicamente.
     // Nenhum __TEMP__ necessário; funciona mesmo com pedidos cancelados/deletados.
     const pedido = await prisma.$transaction(async (tx) => {
-      const last = await tx.pedido.findFirst({
-        where:   { idRastreio: { startsWith: 'VD-' } },
-        orderBy: { id: 'desc' },
-        select:  { idRastreio: true },
+      // Busca TODOS os idRastreio VD- e encontra o maior número real.
+      // Ordenar por `id` (autoincrement) não é confiável — se um pedido
+      // com id maior tiver um VD menor (edição manual, seed, etc.) o próximo
+      // número seria errado. Achar o max explicitamente é simples e correto.
+      const todos = await tx.pedido.findMany({
+        where:  { idRastreio: { startsWith: 'VD-' } },
+        select: { idRastreio: true },
       })
-      const lastNum    = last ? parseInt(last.idRastreio.replace('VD-', '')) || 0 : 0
+      const lastNum = todos.reduce((max, p) => {
+        const n = parseInt(p.idRastreio.replace('VD-', ''), 10) || 0
+        return n > max ? n : max
+      }, 0)
       const idRastreio = `VD-${String(lastNum + 1).padStart(3, '0')}`
 
       return tx.pedido.create({
