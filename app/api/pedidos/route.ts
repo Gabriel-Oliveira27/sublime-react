@@ -26,7 +26,7 @@ function toMetodoPagamento(method: string): 'PIX' | 'DINHEIRO' | 'CREDITO' {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { customer, items, delivery, payment, coupon, total } = body
+    const { customer, items, delivery, payment, coupon, total, enderecoEstruturado } = body
 
     if (!customer?.name || !items?.length || !delivery?.type || !payment?.method) {
       return NextResponse.json({ erro: 'Dados obrigatórios ausentes' }, { status: 400 })
@@ -101,10 +101,20 @@ export async function POST(req: NextRequest) {
     // ── Upsert Cliente (não-crítico) ──────────────────────────────────────
     if (cpfLimpo) {
       try {
+        const enderecoStr = enderecoEstruturado ? JSON.stringify(enderecoEstruturado) : null
         await prisma.cliente.upsert({
           where:  { cpf: cpfLimpo },
-          create: { nome: customer.name, cpf: cpfLimpo, contato: customer.phone || '', compras: [pedido.idRastreio] },
-          update: { compras: { push: pedido.idRastreio } },
+          create: {
+            nome:      customer.name,
+            cpf:       cpfLimpo,
+            contato:   customer.phone || '',
+            compras:   [pedido.idRastreio],
+            enderecos: enderecoStr ? [enderecoStr] : [],
+          },
+          update: {
+            compras:   { push: pedido.idRastreio },
+            ...(enderecoStr ? { enderecos: { push: enderecoStr } } : {}),
+          },
         })
       } catch (e) {
         console.warn('[POST /api/pedidos] upsert cliente:', e)
