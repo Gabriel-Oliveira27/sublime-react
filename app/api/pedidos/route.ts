@@ -79,7 +79,6 @@ export async function POST(req: NextRequest) {
           idRastreio,
           nome:            customer.name,
           contato:         customer.phone || '',
-          cpf:             cpfLimpo,
           pedido:          items,
           endereco:        delivery.address ?? delivery.type,
           totalVenda:      total,

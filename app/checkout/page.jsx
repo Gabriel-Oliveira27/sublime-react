@@ -23,6 +23,7 @@ import styles from './page.module.css';
 const INITIAL_DELIVERY = {
   type: '', pickupWho: '', pickupDate: '', pickupTime: '',
   cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '',
+  referencia: '',
   lat: null, lon: null, distanceKm: null, shippingCost: null, shippingNote: '',
 };
 const INITIAL_COUPON = { code: null, type: null, value: 0, discount: 0, valid: false };
@@ -44,7 +45,19 @@ export default function CheckoutPage() {
 
   const [customer,  setCustomer]  = useState({ name: '', phone: '', cpf: '' });
   const [delivery,  setDelivery]  = useState(INITIAL_DELIVERY);
+  const [pixKey,    setPixKey]    = useState('');
   const [payment,   setPayment]   = useState({ method: '', installments: 1 });
+
+  // Busca a chave PIX do banco quando o método PIX é selecionado
+  const handleSelectPayment = (method) => {
+    setPayment(p => ({ ...p, method }));
+    if (method === 'PIX' && !pixKey) {
+      fetch('/api/config/public')
+        .then(r => r.json())
+        .then(data => { if (data.pix) setPixKey(data.pix); })
+        .catch(() => {});
+    }
+  };
   const [coupon,    setCoupon]    = useState(INITIAL_COUPON);
   const [changeFor, setChangeFor] = useState('');
 
@@ -94,6 +107,7 @@ export default function CheckoutPage() {
         if (!delivery.street || !delivery.number || !delivery.neighborhood || !delivery.city || !delivery.state) {
           showToast('Preencha todos os campos de endereço', 'error'); return false;
         }
+        if (!delivery.referencia.trim()) errs.referencia = 'Informe um ponto de referência';
       }
     }
     if (step === 4) {
@@ -189,7 +203,7 @@ export default function CheckoutPage() {
         });
       } else {
         Object.assign(deliveryPayload, {
-          address:    `${delivery.street}, ${delivery.number}${delivery.complement ? ' – ' + delivery.complement : ''}, ${delivery.neighborhood}, ${delivery.city}/${delivery.state}`,
+          address:    `${delivery.street}, ${delivery.number}${delivery.complement ? ' – ' + delivery.complement : ''}, ${delivery.neighborhood}, ${delivery.city}/${delivery.state}${delivery.referencia ? ' — Ref: ' + delivery.referencia : ''}`,
           cep:        delivery.cep,
           frete:      typeof delivery.shippingCost === 'number' ? delivery.shippingCost : 0,
           distanceKm: delivery.distanceKm,
@@ -433,6 +447,14 @@ export default function CheckoutPage() {
                         </select>
                       </div>
                     </div>
+                    <div className="form-group">
+                      <label>Ponto de Referência *</label>
+                      <input className="form-input"
+                        placeholder="Ex: Próximo ao mercado X, casa de portão azul…"
+                        value={delivery.referencia}
+                        onChange={e => setDelivery(d => ({ ...d, referencia: e.target.value }))}/>
+                      {E('referencia')}
+                    </div>
                     <button className={styles.calcFreteBtn} onClick={() => doCalculateShipping()}>
                       Calcular frete
                     </button>
@@ -490,6 +512,7 @@ export default function CheckoutPage() {
                       <p><strong>Tipo:</strong> Entrega</p>
                       <p><strong>Endereço:</strong> {delivery.street}, {delivery.number}{delivery.complement ? ` – ${delivery.complement}` : ''}</p>
                       <p>{delivery.neighborhood}, {delivery.city}/{delivery.state} — CEP {delivery.cep}</p>
+                      {delivery.referencia && <p><strong>Referência:</strong> {delivery.referencia}</p>}
                       <p><strong>Frete:</strong> {typeof delivery.shippingCost === 'number'
                         ? (delivery.shippingCost === 0 ? 'Grátis' : `R$ ${delivery.shippingCost.toFixed(2)}`) : '—'}</p>
                     </>
@@ -530,7 +553,7 @@ export default function CheckoutPage() {
                   ].map(({ key, Icon, title, sub }) => (
                     <div key={key}
                       className={`${styles.payMethod} ${payment.method === key ? styles.selected : ''}`}
-                      onClick={() => setPayment(p => ({ ...p, method: key }))}
+                    onClick={() => handleSelectPayment(key)}
                     >
                       <div className={styles.payIcon}><Icon size={key === 'PIX' ? 36 : 28}/></div>
                       <h3>{title}</h3>
@@ -542,7 +565,14 @@ export default function CheckoutPage() {
                 {payment.method === 'PIX' && (
                   <div className={styles.infoBox}>
                     <InfoIcon size={18}/>
-                    <span>Após confirmar, você recebe as instruções para pagamento via PIX.</span>
+                    <span>
+                      Após confirmar, você deverá realizar o pagamento via PIX.
+                      {pixKey && (
+                        <>
+                          {' '}Chave PIX: <strong style={{ userSelect: 'all' }}>{pixKey}</strong>
+                        </>
+                      )}
+                    </span>
                   </div>
                 )}
 
