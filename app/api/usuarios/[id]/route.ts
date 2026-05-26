@@ -1,3 +1,4 @@
+import { CORS_HEADERS, corsOptions } from '@/lib/cors'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { autenticar } from '@/lib/middleware'

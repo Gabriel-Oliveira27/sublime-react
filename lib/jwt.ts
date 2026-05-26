@@ -7,7 +7,7 @@ export interface JwtPayload {
   nome:       string
   apelido:    string
   isAdmin:    boolean
-  permissoes: any
+  permissoes: Record<string, { ver: boolean; editar: boolean }> | null
 }
 
 export async function signJwt(payload: JwtPayload): Promise<string> {
