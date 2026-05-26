@@ -62,6 +62,8 @@ export default function CheckoutPage() {
   const [changeFor,       setChangeFor]       = useState('');
   const [locationDetected, setLocationDetected] = useState(false);
   const [locating,         setLocating]         = useState(false);
+  const [savedAddresses,   setSavedAddresses]   = useState([]);
+  const [pickerDismissed,  setPickerDismissed]  = useState(false);
 
   /* ── Mapa nome de estado -> sigla (retorno Nominatim em PT-BR) ── */
   const STATE_NAME_TO_CODE = {
@@ -198,6 +200,16 @@ export default function CheckoutPage() {
 
   const nextStep = async () => {
     if (!validate()) return;
+    // Se avançando do step 1 e CPF preenchido, busca endereços salvos silenciosamente
+    if (step === 1 && customer.cpf) {
+      const cpfLimpo = customer.cpf.replace(/\D/g, '');
+      if (cpfLimpo.length === 11) {
+        fetch(`/api/clientes/enderecos?cpf=${cpfLimpo}`)
+          .then(r => r.json())
+          .then(data => { if (data.enderecos?.length) setSavedAddresses(data.enderecos); })
+          .catch(() => {});
+      }
+    }
     if (step === 2 && delivery.type === 'entrega' &&
         (delivery.shippingCost == null || delivery.shippingCost === 'pending')) {
       try { setLoading(true); setLoadTxt('Calculando frete…'); await doCalculateShipping(); }
@@ -205,6 +217,23 @@ export default function CheckoutPage() {
       finally { setLoading(false); }
     }
     goTo(step + 1);
+  };
+
+  const applyAddress = (addr) => {
+    setDelivery(d => ({
+      ...d,
+      street:       addr.street       || '',
+      number:       addr.number       || '',
+      complement:   addr.complement   || '',
+      neighborhood: addr.neighborhood || '',
+      city:         addr.city         || '',
+      state:        addr.state        || '',
+      cep:          addr.cep ? addr.cep.slice(0,5)+'-'+addr.cep.slice(5) : '',
+      referencia:   addr.referencia   || '',
+      lat: null, lon: null, shippingCost: null, distanceKm: null,
+    }));
+    setLocationDetected(true);
+    setPickerDismissed(true);
   };
 
   /* ── CEP ── */
@@ -292,10 +321,22 @@ export default function CheckoutPage() {
         ? CONFIG.INSTALLMENT_FEES[payment.installments] || 0 : 0;
       const finalTotal = +(total * (1 + instFee)).toFixed(2);
 
+      const enderecoEstruturado = delivery.type === 'entrega' ? {
+        street:       delivery.street,
+        number:       delivery.number,
+        complement:   delivery.complement || '',
+        neighborhood: delivery.neighborhood,
+        city:         delivery.city,
+        state:        delivery.state,
+        cep:          delivery.cep.replace(/\D/g,''),
+        referencia:   delivery.referencia || '',
+      } : null;
+
       const result = await reserveOrder({
         customer,
         items: itemsPayload,
         delivery: deliveryPayload,
+        enderecoEstruturado,
         payment: {
           method:       payment.method,
           installments: Number(payment.installments),
@@ -478,6 +519,58 @@ export default function CheckoutPage() {
                 {delivery.type === 'entrega' && (
                   <>
                     <div className="info-box"><strong>Origem:</strong> {CONFIG.ORIGIN.STREET} — CEP {CONFIG.ORIGIN.CEP}</div>
+
+                    {/* ── Picker de endereços salvos ── */}
+                    {savedAddresses.length > 0 && !pickerDismissed && !locationDetected && (
+                      <div style={{
+                        marginBottom:'1.25rem', padding:'1rem',
+                        background:'var(--surface-muted)', borderRadius:'var(--r-lg)',
+                        border:'1.5px solid var(--border)',
+                      }}>
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'.75rem' }}>
+                          <p style={{ margin:0, fontWeight:700, fontSize:'.9rem' }}>Usar um endereço anterior?</p>
+                          <button
+                            onClick={() => setPickerDismissed(true)}
+                            style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:'1.1rem', lineHeight:1 }}
+                            aria-label="Fechar"
+                          >✕</button>
+                        </div>
+                        <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
+                          {savedAddresses.map((addr, i) => (
+                            <button key={i} onClick={() => applyAddress(addr)} style={{
+                              textAlign:'left', padding:'.75rem 1rem',
+                              background:'var(--surface)', border:'1.5px solid var(--border)',
+                              borderRadius:'var(--r-md)', cursor:'pointer',
+                              transition:'border-color var(--t-base)',
+                              fontFamily:"'DM Sans', sans-serif",
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.borderColor='var(--accent)'}
+                            onMouseLeave={e => e.currentTarget.style.borderColor='var(--border)'}
+                            >
+                              <p style={{ margin:0, fontWeight:600, fontSize:'.88rem' }}>
+                                {addr.street}{addr.number ? `, ${addr.number}` : ''}{addr.complement ? ` – ${addr.complement}` : ''}
+                              </p>
+                              <p style={{ margin:'2px 0 0', fontSize:'.8rem', color:'var(--text-secondary)' }}>
+                                {addr.neighborhood && `${addr.neighborhood}, `}{addr.city}/{addr.state}
+                                {addr.referencia && ` — ${addr.referencia}`}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => setPickerDismissed(true)}
+                          style={{
+                            marginTop:'.75rem', width:'100%', padding:'.5rem',
+                            background:'none', border:'1px dashed var(--border)',
+                            borderRadius:'var(--r-sm)', cursor:'pointer',
+                            fontSize:'.82rem', color:'var(--text-secondary)',
+                            fontFamily:"'DM Sans', sans-serif",
+                          }}
+                        >
+                          + Digitar novo endereço
+                        </button>
+                      </div>
+                    )}
 
                     {/* ── Botão de detecção de localização ── */}
                     {!locationDetected ? (
