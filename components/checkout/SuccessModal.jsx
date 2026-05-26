@@ -69,7 +69,7 @@ export default function SuccessModal({ orderId, paymentMethod, deliveryType, pic
 
         {showPIX && (
           <div className={styles.pixKeyBox}>
-            <span className={styles.pixKeyLabel}>Chave PIX</span>
+            <span className={styles.pixKeyLabel}>Chave PIX </span>
             <span className={styles.pixKeyValue}>{pixKey}</span>
           </div>
         )}

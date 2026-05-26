@@ -64,7 +64,7 @@ function parseProducts(raw) {
 
 function normaliseOrders(raw) {
   return raw.map(o => ({
-    vdNumber:   String(o.vd || o.id || o.idRastreio || '').trim(),
+    vdNumber:   String(o.idRastreio || o.vd || o.id || '').trim(),
     status:     mapStatus(o.etapa || o.status || ''),
     statusText: ETAPA_LABELS[o.etapa] || String(o.etapa || o.status || '').trim() || 'Reservado',
     products:   parseProducts(o.pedido || o.order || o.items || ''),

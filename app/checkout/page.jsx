@@ -58,8 +58,81 @@ export default function CheckoutPage() {
         .catch(() => {});
     }
   };
-  const [coupon,    setCoupon]    = useState(INITIAL_COUPON);
-  const [changeFor, setChangeFor] = useState('');
+  const [coupon,          setCoupon]          = useState(INITIAL_COUPON);
+  const [changeFor,       setChangeFor]       = useState('');
+  const [locationDetected, setLocationDetected] = useState(false);
+  const [locating,         setLocating]         = useState(false);
+
+  /* ── Mapa nome de estado -> sigla (retorno Nominatim em PT-BR) ── */
+  const STATE_NAME_TO_CODE = {
+    'Acre':'AC','Alagoas':'AL','Amapá':'AP','Amazonas':'AM','Bahia':'BA',
+    'Ceará':'CE','Distrito Federal':'DF','Espírito Santo':'ES','Goiás':'GO',
+    'Maranhão':'MA','Mato Grosso':'MT','Mato Grosso do Sul':'MS',
+    'Minas Gerais':'MG','Pará':'PA','Paraíba':'PB','Paraná':'PR',
+    'Pernambuco':'PE','Piauí':'PI','Rio de Janeiro':'RJ','Rio Grande do Norte':'RN',
+    'Rio Grande do Sul':'RS','Rondônia':'RO','Roraima':'RR','Santa Catarina':'SC',
+    'São Paulo':'SP','Sergipe':'SE','Tocantins':'TO',
+  };
+
+  /* ── Detectar localização via GPS + Nominatim (OpenStreetMap) ── */
+  const doDetectLocation = () => {
+    if (!navigator.geolocation) {
+      showToast('Geolocalização não suportada pelo seu navegador.', 'error');
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude: lat, longitude: lon } = pos.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+            { headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' } }
+          );
+          if (!res.ok) throw new Error('Nominatim error');
+          const data  = await res.json();
+          const addr  = data.address || {};
+
+          const street       = addr.road || addr.pedestrian || addr.path || '';
+          const number       = addr.house_number || '';
+          const neighborhood = addr.suburb || addr.neighbourhood || addr.quarter || addr.district || addr.city_district || '';
+          const city         = addr.city || addr.town || addr.village || addr.municipality || '';
+          const rawState     = addr.state || '';
+          const stateCode    = STATE_NAME_TO_CODE[rawState] || rawState.slice(0, 2).toUpperCase();
+          const rawCep       = (addr.postcode || '').replace(/\D/g, '');
+          const cep          = rawCep.length === 8 ? `${rawCep.slice(0,5)}-${rawCep.slice(5)}` : '';
+
+          setDelivery(d => ({
+            ...d,
+            street, number, neighborhood, city,
+            state: stateCode,
+            cep,
+            lat, lon,
+            distanceKm: null, shippingCost: null, shippingNote: '',
+          }));
+          setLocationDetected(true);
+          showToast('Localização detectada! Confirme os dados abaixo.', 'success');
+
+          // Já inicia cálculo de frete com as coordenadas reais
+          if (city && stateCode) {
+            await doCalculateShipping({ city, state: stateCode, cep: rawCep, lat, lon });
+          }
+        } catch {
+          showToast('Não foi possível identificar seu endereço. Preencha manualmente.', 'warning');
+        } finally {
+          setLocating(false);
+        }
+      },
+      (err) => {
+        setLocating(false);
+        if (err.code === 1)
+          showToast('Permissão de localização negada. Preencha o endereço manualmente.', 'warning');
+        else
+          showToast('Não foi possível obter sua localização. Tente pelo CEP.', 'error');
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  };
 
   useEffect(() => {
     if (isEmpty && !orderPlacedRef.current) {
@@ -164,8 +237,13 @@ export default function CheckoutPage() {
         const c = await geocodeAddress(`${CONFIG.ORIGIN.STREET}, ${CONFIG.ORIGIN.CITY}, ${CONFIG.ORIGIN.STATE}`);
         if (c) { CONFIG.ORIGIN.lat = c.lat; CONFIG.ORIGIN.lon = c.lon; }
       }
-      let destCoords = null;
-      if (delivery.street && delivery.number) {
+
+      // Se já temos coordenadas GPS (via detecção automática), usa diretamente
+      let destCoords = (overrides.lat && overrides.lon)
+        ? { lat: overrides.lat, lon: overrides.lon }
+        : null;
+
+      if (!destCoords && delivery.street && delivery.number) {
         destCoords = await geocodeAddress(`${delivery.street} ${delivery.number}, ${city} ${stUF}, ${cep}`);
       }
       if (!destCoords) destCoords = await geocodeAddress(`${city}, ${stUF}, ${cep}`);
@@ -400,6 +478,81 @@ export default function CheckoutPage() {
                 {delivery.type === 'entrega' && (
                   <>
                     <div className="info-box"><strong>Origem:</strong> {CONFIG.ORIGIN.STREET} — CEP {CONFIG.ORIGIN.CEP}</div>
+
+                    {/* ── Botão de detecção de localização ── */}
+                    {!locationDetected ? (
+                      <div style={{
+                        display:'flex', flexDirection:'column', alignItems:'center',
+                        gap:'.75rem', padding:'1.25rem', marginBottom:'1.25rem',
+                        background:'var(--surface-muted)', border:'2px dashed var(--border)',
+                        borderRadius:'var(--r-lg)',
+                      }}>
+                        <p style={{ margin:0, color:'var(--text-secondary)', fontSize:'.9rem', textAlign:'center' }}>
+                          Quer preencher o endereço automaticamente?
+                        </p>
+                        <button
+                          onClick={doDetectLocation}
+                          disabled={locating}
+                          style={{
+                            display:'flex', alignItems:'center', gap:'.6rem',
+                            height:'44px', padding:'0 1.5rem',
+                            background: locating ? 'var(--surface-muted)' : 'var(--accent)',
+                            color: locating ? 'var(--text-secondary)' : 'white',
+                            border: locating ? '1.5px solid var(--border)' : 'none',
+                            borderRadius:'var(--r-md)', fontWeight:700, fontSize:'.9rem',
+                            cursor: locating ? 'not-allowed' : 'pointer',
+                            transition:'all var(--t-base)', fontFamily:"'DM Sans', sans-serif",
+                          }}
+                        >
+                          {locating ? (
+                            <>
+                              <span className="spinner spinner-sm" style={{ borderTopColor:'var(--accent)', borderColor:'rgba(0,0,0,.1)' }}/>
+                              Detectando…
+                            </>
+                          ) : (
+                            <>
+                              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                                <path d="M12 8a4 4 0 100 8 4 4 0 000-8z" fill="currentColor" opacity=".15"/>
+                              </svg>
+                              Usar minha localização
+                            </>
+                          )}
+                        </button>
+                        <span style={{ fontSize:'.78rem', color:'var(--text-muted)' }}>
+                          Usa o GPS do seu dispositivo — gratuito e sem compartilhar seus dados
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{
+                        display:'flex', alignItems:'center', gap:'.75rem',
+                        padding:'1rem', marginBottom:'1.25rem',
+                        background:'rgba(45,158,107,.08)', border:'1.5px solid var(--success)',
+                        borderRadius:'var(--r-md)',
+                      }}>
+                        <CheckCircleIcon size={20} style={{ color:'var(--success)', flexShrink:0 }}/>
+                        <div style={{ flex:1 }}>
+                          <p style={{ margin:0, fontWeight:600, fontSize:'.9rem', color:'var(--success)' }}>
+                            Localização detectada!
+                          </p>
+                          <p style={{ margin:'2px 0 0', fontSize:'.82rem', color:'var(--text-secondary)' }}>
+                            Confira os campos abaixo e corrija o que precisar.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => { setLocationDetected(false); setDelivery(d => ({ ...d, street:'', number:'', neighborhood:'', city:'', state:'', cep:'', lat:null, lon:null, shippingCost:null })); }}
+                          style={{
+                            padding:'.3rem .7rem', fontSize:'.78rem', fontWeight:600,
+                            background:'transparent', border:'1px solid var(--success)',
+                            borderRadius:'var(--r-sm)', color:'var(--success)', cursor:'pointer',
+                            flexShrink:0,
+                          }}
+                        >
+                          Limpar
+                        </button>
+                      </div>
+                    )}
+
                     <div className="form-group">
                       <label>CEP *</label>
                       <div style={{ display:'flex', gap:'.75rem' }}>
