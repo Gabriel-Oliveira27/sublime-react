@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { autenticar } from '@/lib/middleware'
-
-const CORS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-}
+import { CORS_HEADERS, corsOptions } from '@/lib/cors'
 
 export async function POST(
   req: NextRequest,
@@ -18,20 +13,20 @@ export async function POST(
   const { id } = await params
   const idNum = parseInt(id)
   if (isNaN(idNum)) {
-    return NextResponse.json({ erro: 'ID inválido' }, { status: 400 })
+    return NextResponse.json({ erro: 'ID inválido' }, { status: 400, headers: CORS_HEADERS })
   }
 
   try {
     const pedido = await prisma.pedido.findUnique({ where: { id: idNum } })
 
     if (!pedido) {
-      return NextResponse.json({ erro: 'Pedido não encontrado' }, { status: 404 })
+      return NextResponse.json({ erro: 'Pedido não encontrado' }, { status: 404, headers: CORS_HEADERS })
     }
 
     if (pedido.etapa === 'CANCELADO') {
       return NextResponse.json(
         { erro: 'Este pedido já foi cancelado.' },
-        { status: 400 }
+        { status: 400, headers: CORS_HEADERS }
       )
     }
 
@@ -39,26 +34,25 @@ export async function POST(
      * Estrutura real do campo "pedido" (Json) — montada em checkout/page.jsx:
      *   { id: string, descricao: string, cores: string, qty: number }
      *
-     * Atenção: item.id vem como STRING do CartContext ("5", não 5).
-     *          item.qty é a quantidade pedida (não item.quantity).
+     * item.id  → string ("5"), precisa de parseInt para o Prisma
+     * item.qty → quantidade pedida
      */
     const itens = pedido.pedido as Array<{
-      id:       string | number
-      qty:      number
-      descricao?: string
+      id:  string | number
+      qty: number
     }>
 
     if (!Array.isArray(itens) || itens.length === 0) {
       return NextResponse.json(
         { erro: 'Pedido não possui itens para devolver.' },
-        { status: 400 }
+        { status: 400, headers: CORS_HEADERS }
       )
     }
 
-    // Restaura o estoque de cada item em paralelo
+    // Restaura estoque de cada item em paralelo
     await Promise.all(
       itens.map(item => {
-        const estoqueId = parseInt(String(item.id))   // string → Int
+        const estoqueId = parseInt(String(item.id))
         const qty       = parseInt(String(item.qty)) || 1
         return prisma.estoque.update({
           where: { id: estoqueId },
@@ -74,14 +68,14 @@ export async function POST(
 
     return NextResponse.json(
       { sucesso: true, pedido: pedidoAtualizado },
-      { headers: CORS }
+      { headers: CORS_HEADERS }
     )
   } catch (err) {
     console.error('[POST /api/pedidos/:id/devolucao]', err)
-    return NextResponse.json({ erro: 'Erro interno' }, { status: 500 })
+    return NextResponse.json({ erro: 'Erro interno' }, { status: 500, headers: CORS_HEADERS })
   }
 }
 
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: CORS })
+export function OPTIONS() {
+  return corsOptions()
 }
