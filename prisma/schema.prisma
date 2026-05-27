@@ -1,3 +1,4 @@
+// Caminho: prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -5,10 +6,6 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-
-// ───────────────────────────────────────────
-// ENUMS
-// ───────────────────────────────────────────
 
 enum Linha {
   FREEZER
@@ -38,10 +35,6 @@ enum EtapaPedido {
   ENTREGUE
   CANCELADO
 }
-
-// ───────────────────────────────────────────
-// MODELS
-// ───────────────────────────────────────────
 
 model Estoque {
   id      Int     @id @default(autoincrement())
@@ -99,8 +92,9 @@ model Usuario {
   senha      String
   ativo      Boolean  @default(true)
   isAdmin    Boolean  @default(false)
-  permissoes Json?    // { estoque:{ver,editar}, pedidos:{ver,editar}, cupons:{ver,editar}, config:{ver,editar}, usuarios:{ver,editar} }
-  foto       String?  // URL da foto (Cloudinary)
+  permissoes Json?
+  foto       String?
+  tema       String   @default("dark")
   criadoEm   DateTime @default(now())
 }
 

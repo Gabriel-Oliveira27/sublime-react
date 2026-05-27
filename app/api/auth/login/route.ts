@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { signJwt } from '@/lib/jwt'
 import { COOKIE_OPTIONS } from '@/lib/middleware'
+import { CORS_HEADERS } from '@/lib/cors'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
     const body   = await req.json()
     const parsed = schema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ erro: 'Dados inválidos' }, { status: 400 })
+      return NextResponse.json({ erro: 'Dados inválidos' }, { status: 400, headers: CORS_HEADERS })
     }
 
     const { email, senha } = parsed.data
@@ -25,12 +26,12 @@ export async function POST(req: NextRequest) {
     })
 
     if (!usuario || !usuario.ativo) {
-      return NextResponse.json({ erro: 'Usuário não encontrado' }, { status: 401 })
+      return NextResponse.json({ erro: 'Usuário não encontrado' }, { status: 401, headers: CORS_HEADERS })
     }
 
     const senhaCorreta = await bcrypt.compare(senha, usuario.senha)
     if (!senhaCorreta) {
-      return NextResponse.json({ erro: 'Senha incorreta' }, { status: 401 })
+      return NextResponse.json({ erro: 'Senha incorreta' }, { status: 401, headers: CORS_HEADERS })
     }
 
     const token = await signJwt({
@@ -38,7 +39,6 @@ export async function POST(req: NextRequest) {
       nome:       usuario.nome,
       apelido:    usuario.apelido,
       isAdmin:    usuario.isAdmin,
-      // JsonValue → cast para o tipo esperado pelo JwtPayload
       permissoes: (usuario.permissoes ?? null) as Record<string, { ver: boolean; editar: boolean }> | null,
     })
 
@@ -47,17 +47,17 @@ export async function POST(req: NextRequest) {
         id:         usuario.id,
         nome:       usuario.nome,
         apelido:    usuario.apelido,
-        foto:       usuario.foto  ?? null,
+        foto:       usuario.foto    ?? null,
         isAdmin:    usuario.isAdmin,
         permissoes: usuario.permissoes ?? null,
+        tema:       usuario.tema    ?? 'dark',
       },
-    })
+    }, { headers: CORS_HEADERS })
 
-    // Cookie httpOnly — o token JWT nunca é acessível pelo JavaScript
     res.headers.set('Set-Cookie', `sublime_auth=${token}; ${COOKIE_OPTIONS}`)
     return res
   } catch (err) {
     console.error('[POST /api/auth/login]', err)
-    return NextResponse.json({ erro: 'Erro interno' }, { status: 500 })
+    return NextResponse.json({ erro: 'Erro interno' }, { status: 500, headers: CORS_HEADERS })
   }
 }
