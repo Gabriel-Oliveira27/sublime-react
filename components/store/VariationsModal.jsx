@@ -1,4 +1,3 @@
-// components/store/VariationsModal.jsx
 'use client';
 import { useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
@@ -42,7 +41,7 @@ export default function VariationsModal({ group, onClose }) {
               const images = parseImages(v.imagem);
               return (
                 <div key={i} className={styles.card}>
-                  <ProductImageCarousel images={images} alt={v.cores || v.descricao} />
+                  <ProductImageCarousel images={images} alt={v.cores || v.descricao} showThumbs={false} alwaysVisible />
                   {v.cores && <div className={styles.color}><span>{v.cores}</span></div>}
                   <div className={styles.info}>
                     {v.filtros && <div>🏷️ {v.filtros}</div>}

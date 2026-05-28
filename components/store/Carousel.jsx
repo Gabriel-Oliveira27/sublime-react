@@ -12,7 +12,7 @@ export default function Carousel() {
   const prev = useCallback(() => setIndex(p => (p - 1 + slides.length) % slides.length), [slides.length]);
 
   useEffect(() => {
-    const t = setInterval(next, 5000);
+    const t = setInterval(next, 8000);
     return () => clearInterval(t);
   }, [next]);
 
