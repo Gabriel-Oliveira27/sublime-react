@@ -10,8 +10,9 @@ const createSchema = z.object({
   cores:   z.string().default(''),
   qtd:     z.number().int().min(0),
   valor:   z.number().min(0),
-  imagem:  z.string().default(''),
-  filtros: z.string().default(''),
+  imagem:   z.string().default(''),
+  filtros:  z.string().default(''),
+  detalhes: z.string().nullable().optional(),
 })
 
 export async function GET() {

@@ -1,8 +1,11 @@
+// components/store/VariationsModal.jsx
 'use client';
 import { useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
-import { applyDiscount, productImagePath, PLACEHOLDER_IMG } from '@/lib/utils';
+import { applyDiscount, parseImages } from '@/lib/utils';
+import ProductImageCarousel from './ProductImageCarousel';
+import ProductDescription from './ProductDescription';
 import styles from './VariationsModal.module.css';
 
 export default function VariationsModal({ group, onClose }) {
@@ -32,18 +35,14 @@ export default function VariationsModal({ group, onClose }) {
           <button className={styles.closeBtn} onClick={onClose} aria-label="Fechar">×</button>
         </div>
         <div className={styles.body}>
+          <ProductDescription detalhes={group.variations[0]?.detalhes} />
           <div className={styles.grid}>
             {group.variations.map((v, i) => {
               const calc = applyDiscount(v.valor);
-              const imgSrc = productImagePath(v.imagem);
+              const images = parseImages(v.imagem);
               return (
                 <div key={i} className={styles.card}>
-                  <img
-                    src={imgSrc}
-                    alt={v.cores || v.descricao}
-                    className={styles.img}
-                    onError={e => { e.target.onerror = null; e.target.src = PLACEHOLDER_IMG; }}
-                  />
+                  <ProductImageCarousel images={images} alt={v.cores || v.descricao} />
                   {v.cores && <div className={styles.color}><span>{v.cores}</span></div>}
                   <div className={styles.info}>
                     {v.filtros && <div>🏷️ {v.filtros}</div>}
