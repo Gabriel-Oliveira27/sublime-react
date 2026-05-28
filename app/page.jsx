@@ -1,4 +1,3 @@
-// app/page.jsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchProducts } from '@/lib/api';
@@ -40,16 +39,22 @@ function groupProducts(products) {
   return Object.values(map);
 }
 
+// Normaliza string: minúsculas + sem acentos
+function norm(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 function applyFiltersToGroups(groups, filters) {
   return groups.filter(g => {
-    const okLinha  = !filters.linha  || g.linha?.toLowerCase().includes(filters.linha.toLowerCase());
-    const okLitros = !filters.litros || g.litros?.toString().toLowerCase().includes(filters.litros.toLowerCase());
-    const term     = filters.search?.toLowerCase();
+    const okLinha  = !filters.linha  || norm(g.linha).includes(norm(filters.linha));
+    const okLitros = !filters.litros || norm(g.litros).includes(norm(filters.litros));
+    const term     = norm(filters.search);
     const okSearch = !term ||
-      g.descricao?.toLowerCase().includes(term) ||
+      norm(g.descricao).includes(term) ||
       g.variations.some(v =>
-        v.cores?.toLowerCase().includes(term) ||
-        v.filtros?.toLowerCase().includes(term)
+        norm(v.cores).includes(term)   ||
+        norm(v.filtros).includes(term) ||
+        norm(v.linha).includes(term)
       );
     const okMin = !filters.priceMin || g.minPrice >= parseFloat(filters.priceMin);
     const okMax = !filters.priceMax || g.maxPrice <= parseFloat(filters.priceMax);

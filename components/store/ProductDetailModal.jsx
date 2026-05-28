@@ -1,4 +1,3 @@
-// components/store/ProductDetailModal.jsx
 'use client';
 import { useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
@@ -50,7 +49,7 @@ export default function ProductDetailModal({ group, onClose }) {
           {/* Esquerda: imagem / carrossel */}
           <div className={styles.imageCol}>
             <div className={styles.imageWrap}>
-              <ProductImageCarousel images={imgs} alt={group.descricao} alwaysVisible />
+              <ProductImageCarousel images={imgs} alt={group.descricao} alwaysVisible showThumbs />
             </div>
           </div>
 

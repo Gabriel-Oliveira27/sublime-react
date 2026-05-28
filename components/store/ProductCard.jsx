@@ -1,4 +1,3 @@
-// components/store/ProductCard.jsx
 'use client';
 import { applyDiscount, parseImages } from '@/lib/utils';
 import ProductImageCarousel from './ProductImageCarousel';
@@ -60,7 +59,7 @@ export default function ProductCard({ group, onOpenVariations, onOpenDetail }) {
             {group.totalStock <= 5 && <span className={`${styles.badge} ${styles.badgeLast}`}>Últimas unidades</span>}
           </div>
         )}
-        <ProductImageCarousel images={images} alt={group.descricao} />
+        <ProductImageCarousel images={images} alt={group.descricao} showThumbs={false} />
       </div>
 
       <div className={styles.body}>
