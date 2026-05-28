@@ -1,7 +1,7 @@
+// components/store/ProductCard.jsx
 'use client';
-import { useCart } from '@/context/CartContext';
-import { useToast } from '@/context/ToastContext';
-import { applyDiscount, productImagePath, PLACEHOLDER_IMG } from '@/lib/utils';
+import { applyDiscount, parseImages } from '@/lib/utils';
+import ProductImageCarousel from './ProductImageCarousel';
 import styles from './ProductCard.module.css';
 
 function PriceDisplay({ group, multi }) {
@@ -46,21 +46,10 @@ function PriceDisplay({ group, multi }) {
   );
 }
 
-export default function ProductCard({ group, onOpenVariations }) {
-  const { add } = useCart();
-  const { showToast } = useToast();
+export default function ProductCard({ group, onOpenVariations, onOpenDetail }) {
   const multi  = group.variations.length > 1;
   const first  = group.variations[0];
-  const imgSrc = productImagePath(first.imagem);
-
-  const handleAdd = () => {
-    const result = add(first);
-    if (result !== false) {
-      showToast('Produto adicionado ao carrinho!', 'success');
-    } else {
-      showToast('Estoque insuficiente', 'error');
-    }
-  };
+  const images = parseImages(first.imagem);
 
   return (
     <article className={styles.card}>
@@ -71,13 +60,7 @@ export default function ProductCard({ group, onOpenVariations }) {
             {group.totalStock <= 5 && <span className={`${styles.badge} ${styles.badgeLast}`}>Últimas unidades</span>}
           </div>
         )}
-        <img
-          src={imgSrc}
-          alt={group.descricao}
-          className={styles.img}
-          loading="lazy"
-          onError={e => { e.target.onerror = null; e.target.src = PLACEHOLDER_IMG; }}
-        />
+        <ProductImageCarousel images={images} alt={group.descricao} />
       </div>
 
       <div className={styles.body}>
@@ -92,9 +75,9 @@ export default function ProductCard({ group, onOpenVariations }) {
         <div className={styles.stock}>{group.totalStock} em estoque</div>
         <button
           className={styles.btn}
-          onClick={multi ? () => onOpenVariations(group) : handleAdd}
+          onClick={() => multi ? onOpenVariations(group) : onOpenDetail(group)}
         >
-          {multi ? 'Ver Opções' : 'Adicionar ao Carrinho'}
+          {multi ? 'Ver Opções' : 'Ver Produto'}
         </button>
       </div>
     </article>

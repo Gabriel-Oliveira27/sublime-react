@@ -44,8 +44,9 @@ model Estoque {
   litros  String
   valor   Decimal @db.Decimal(10, 2)
   linha   Linha
-  imagem  String
-  filtros String  @default("")
+  imagem   String
+  filtros  String  @default("")
+  detalhes String?
 }
 
 model Cupom {

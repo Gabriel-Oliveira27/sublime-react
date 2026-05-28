@@ -1,0 +1,73 @@
+/* components/store/ProductImageCarousel.module.css */
+
+.wrap { display: flex; flex-direction: column; gap: var(--sp-1); width: 100%; height: 100%; }
+
+/* Stage */
+.stage {
+  position: relative; flex: 1; min-height: 0;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+
+.img {
+  width: 100%; height: 100%;
+  object-fit: contain; padding: var(--sp-4);
+  animation: fadeIn var(--t-base) var(--ease-out) both;
+}
+@keyframes fadeIn { from { opacity:0; transform:scale(.97); } to { opacity:1; transform:none; } }
+
+/* Setas — ocultas por padrão */
+.arrow {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 30px; height: 30px; border-radius: var(--r-full);
+  background: rgba(255,255,255,.9); backdrop-filter: blur(4px);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); box-shadow: var(--shadow-sm);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+.arrow:hover { color: var(--accent); border-color: var(--accent); background: white; }
+.arrowPrev { left: var(--sp-2); }
+.arrowNext { right: var(--sp-2); }
+
+/* Contador — oculto por padrão */
+.counter {
+  position: absolute; bottom: var(--sp-2); right: var(--sp-2);
+  font-size: .68rem; font-weight: 600; color: var(--text-muted);
+  background: rgba(255,255,255,.8); backdrop-filter: blur(4px);
+  padding: 2px 7px; border-radius: var(--r-full); border: 1px solid var(--border);
+  pointer-events: none; opacity: 0; transition: opacity var(--t-fast);
+}
+
+/* Thumbnails — ocultas por padrão */
+.thumbs {
+  display: flex; gap: var(--sp-1); justify-content: center; flex-wrap: wrap;
+  padding: 0 var(--sp-2);
+  opacity: 0; max-height: 0; overflow: hidden;
+  transition: opacity var(--t-base), max-height var(--t-base) var(--ease-out);
+}
+.thumb {
+  width: 36px; height: 36px; border-radius: var(--r-sm); overflow: hidden;
+  border: 2px solid var(--border); background: var(--cream); flex-shrink: 0;
+  transition: all var(--t-fast); opacity: .6;
+}
+.thumb img { width: 100%; height: 100%; object-fit: contain; padding: 2px; }
+.thumb:hover { opacity: 1; border-color: var(--border-strong); }
+.thumbActive { border-color: var(--accent) !important; opacity: 1; }
+
+/* Hover: mostrar tudo */
+.wrap:hover .arrow   { opacity: 1; pointer-events: auto; }
+.wrap:hover .counter { opacity: 1; }
+.wrap:hover .thumbs  { opacity: 1; max-height: 56px; }
+
+/* Touch (sem hover): mostrar sempre */
+@media (hover: none) {
+  .arrow   { opacity: 1; pointer-events: auto; }
+  .counter { opacity: 1; }
+  .thumbs  { opacity: 1; max-height: 56px; }
+}
+
+/* alwaysVisible: usado no modal */
+.alwaysVisible .arrow   { opacity: 1; pointer-events: auto; }
+.alwaysVisible .counter { opacity: 1; }
+.alwaysVisible .thumbs  { opacity: 1; max-height: 56px; }

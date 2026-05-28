@@ -1,3 +1,4 @@
+// app/page.jsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchProducts } from '@/lib/api';
@@ -8,6 +9,7 @@ import Carousel from '@/components/store/Carousel';
 import ProductCard from '@/components/store/ProductCard';
 import FilterSidebar from '@/components/store/FilterSidebar';
 import VariationsModal from '@/components/store/VariationsModal';
+import ProductDetailModal from '@/components/store/ProductDetailModal';
 import CartSidebar from '@/components/cart/CartSidebar';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
@@ -63,6 +65,7 @@ export default function StorePage() {
   const [error,       setError]         = useState(null);
   const [menuOpen,    setMenuOpen]      = useState(false);
   const [modalGroup,  setModalGroup]    = useState(null);
+  const [detailGroup, setDetailGroup]   = useState(null);
   const { sidebarOpen, closeSidebar }   = useCart();
   const { showToast }                   = useToast();
   const headerSearchRef                 = useRef(null);
@@ -164,6 +167,7 @@ export default function StorePage() {
                   key={`${group.descricao}-${i}`}
                   group={group}
                   onOpenVariations={setModalGroup}
+                  onOpenDetail={setDetailGroup}
                 />
               ))}
             </div>
@@ -174,8 +178,11 @@ export default function StorePage() {
         <FilterSidebar products={allProducts} onFiltersChange={handleFilters} />
       </div>
 
-      {modalGroup && (
-        <VariationsModal group={modalGroup} onClose={() => setModalGroup(null)} />
+      {modalGroup  && (
+        <VariationsModal    group={modalGroup}  onClose={() => setModalGroup(null)} />
+      )}
+      {detailGroup && (
+        <ProductDetailModal group={detailGroup} onClose={() => setDetailGroup(null)} />
       )}
 
       <Footer />
