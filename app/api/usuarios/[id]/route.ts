@@ -1,3 +1,4 @@
+// Caminho: app/api/usuarios/[id]/route.ts
 import { CORS_HEADERS, corsOptions } from '@/lib/cors'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
@@ -6,11 +7,12 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
 const updateSchema = z.object({
-  nome:      z.string().min(2).optional(),
-  apelido:   z.string().min(1).optional(),
-  foto:      z.string().url().nullable().optional(),
-  ativo:     z.boolean().optional(),
-  senha:     z.string().min(6).optional(),
+  nome:       z.string().min(2).optional(),
+  apelido:    z.string().min(1).optional(),
+  foto:       z.string().url().nullable().optional(),
+  tema:       z.enum(['dark', 'light', 'violet']).optional(),
+  ativo:      z.boolean().optional(),
+  senha:      z.string().min(6).optional(),
   permissoes: z.object({
     estoque:  z.object({ ver: z.boolean(), editar: z.boolean() }),
     pedidos:  z.object({ ver: z.boolean(), editar: z.boolean() }),
@@ -20,7 +22,6 @@ const updateSchema = z.object({
   }).optional(),
 })
 
-/** Atualiza usuário — Admin edita qualquer um; usuário edita a si mesmo */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -34,18 +35,18 @@ export async function PATCH(
   const ehProprio = auth.usuario.id === idNum
 
   if (!ehAdmin && !ehProprio) {
-    return NextResponse.json({ erro: 'Sem permissão' }, { status: 403 })
+    return NextResponse.json({ erro: 'Sem permissão' }, { status: 403, headers: CORS_HEADERS })
   }
 
   try {
     const body   = await req.json()
     const parsed = updateSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ erro: 'Dados inválidos' }, { status: 400 })
+      return NextResponse.json({ erro: 'Dados inválidos' }, { status: 400, headers: CORS_HEADERS })
     }
 
     const { senha, permissoes, ativo, ...resto } = parsed.data
-    const data: Record<string, unknown> = { ...resto }
+    const data: Record<string, unknown> = { ...resto } // inclui nome, apelido, foto, tema
 
     if (ehAdmin && permissoes) data.permissoes = permissoes
     if (ehAdmin && typeof ativo === 'boolean') data.ativo = ativo
@@ -56,18 +57,17 @@ export async function PATCH(
       data,
       select: {
         id: true, nome: true, apelido: true, email: true,
-        foto: true, isAdmin: true, permissoes: true, ativo: true,
+        foto: true, isAdmin: true, permissoes: true, ativo: true, tema: true,
       },
     })
 
-    return NextResponse.json(atualizado)
+    return NextResponse.json(atualizado, { headers: CORS_HEADERS })
   } catch (err) {
     console.error('[PATCH /api/usuarios/:id]', err)
-    return NextResponse.json({ erro: 'Erro interno' }, { status: 500 })
+    return NextResponse.json({ erro: 'Erro interno' }, { status: 500, headers: CORS_HEADERS })
   }
 }
 
-/** Desativa (soft-delete) — apenas Admin, não pode desativar a si mesmo */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -76,38 +76,28 @@ export async function DELETE(
   if (auth instanceof NextResponse) return auth
 
   if (!auth.usuario.isAdmin) {
-    return NextResponse.json({ erro: 'Acesso restrito a administradores' }, { status: 403 })
+    return NextResponse.json({ erro: 'Acesso restrito a administradores' }, { status: 403, headers: CORS_HEADERS })
   }
 
   const { id } = await params
   const idNum   = parseInt(id)
 
   if (auth.usuario.id === idNum) {
-    return NextResponse.json({ erro: 'Você não pode desativar sua própria conta' }, { status: 400 })
+    return NextResponse.json({ erro: 'Você não pode desativar sua própria conta' }, { status: 400, headers: CORS_HEADERS })
   }
 
   try {
     const alvo = await prisma.usuario.findUnique({ where: { id: idNum } })
     if (alvo?.isAdmin) {
-      return NextResponse.json({ erro: 'Não é possível remover outro administrador' }, { status: 400 })
+      return NextResponse.json({ erro: 'Não é possível remover outro administrador' }, { status: 400, headers: CORS_HEADERS })
     }
 
     await prisma.usuario.update({ where: { id: idNum }, data: { ativo: false } })
-    return NextResponse.json({ sucesso: true })
+    return NextResponse.json({ sucesso: true }, { headers: CORS_HEADERS })
   } catch (err) {
     console.error('[DELETE /api/usuarios/:id]', err)
-    return NextResponse.json({ erro: 'Erro interno' }, { status: 500 })
+    return NextResponse.json({ erro: 'Erro interno' }, { status: 500, headers: CORS_HEADERS })
   }
 }
 
-export async function OPTIONS() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin':      process.env.DASHBOARD_ORIGIN ?? '*',
-      'Access-Control-Allow-Methods':     'GET,POST,PATCH,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers':     'Content-Type,Authorization',
-      'Access-Control-Allow-Credentials': 'true',
-    },
-  })
-}
+export function OPTIONS() { return corsOptions() }
