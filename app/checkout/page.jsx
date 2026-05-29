@@ -49,8 +49,24 @@ export default function CheckoutPage() {
   const [delivery,  setDelivery]  = useState(INITIAL_DELIVERY);
   const [pixKey,    setPixKey]    = useState('');
   const [payment,   setPayment]   = useState({ method: '', installments: 1 });
+  const [paymentConfig, setPaymentConfig] = useState({ pix: true, credito: true, dinheiro: true });
 
-  // Busca a chave PIX do banco quando o método PIX é selecionado
+  // Busca métodos de pagamento habilitados e chave PIX da API pública
+  useEffect(() => {
+    fetch('/api/config/public')
+      .then(r => r.json())
+      .then(data => {
+        if (data.pix) setPixKey(data.pix);
+        setPaymentConfig({
+          pix:      data.pagamento_pix      !== 'false',
+          credito:  data.pagamento_credito  !== 'false',
+          dinheiro: data.pagamento_dinheiro !== 'false',
+        });
+      })
+      .catch(() => {});
+  }, []);
+
+  // Busca a chave PIX do banco quando o método PIX é selecionado (fallback se ainda não carregou)
   const handleSelectPayment = (method) => {
     setPayment(p => ({ ...p, method }));
     if (method === 'PIX' && !pixKey) {
@@ -809,10 +825,10 @@ export default function CheckoutPage() {
 
                 <div className={styles.payMethods}>
                   {[
-                    { key:'PIX',      Icon: PixIcon,        title:'PIX',              sub:'Aprovação imediata' },
-                    { key:'Dinheiro', Icon: BanknoteIcon,   title:'Dinheiro',         sub:'Pagar na entrega/retirada' },
-                    { key:'Credito',  Icon: CreditCardIcon, title:'Cartão de Crédito',sub:'Parcelamento disponível' },
-                  ].map(({ key, Icon, title, sub }) => (
+                    { key:'PIX',      Icon: PixIcon,        title:'PIX',              sub:'Aprovação imediata',        enabled: paymentConfig.pix      },
+                    { key:'Dinheiro', Icon: BanknoteIcon,   title:'Dinheiro',         sub:'Pagar na entrega/retirada', enabled: paymentConfig.dinheiro  },
+                    { key:'Credito',  Icon: CreditCardIcon, title:'Cartão de Crédito',sub:'Parcelamento disponível',   enabled: paymentConfig.credito   },
+                  ].filter(m => m.enabled).map(({ key, Icon, title, sub }) => (
                     <div key={key}
                       className={`${styles.payMethod} ${payment.method === key ? styles.selected : ''}`}
                     onClick={() => handleSelectPayment(key)}
