@@ -11,7 +11,7 @@ function cartReducer(state, action) {
       return { ...state, items: action.items };
     case 'ADD': {
       const id = String(action.product.id);
-      const calc = applyDiscount(action.product.valor);
+      const calc = applyDiscount(action.product.valor, action.discountPct ?? 0);
       const finalPrice = calc.hasDiscount ? calc.finalPrice : parseFloat(action.product.valor);
       const existing = state.items.find(i => i.id === id);
       if (existing) {
@@ -85,7 +85,7 @@ export function CartProvider({ children }) {
   const totalPrice  = state.items.reduce((s, i) => s + parseFloat(i.valor) * i.quantity, 0);
   const isEmpty     = state.items.length === 0;
 
-  const add = useCallback((product) => dispatch({ type: 'ADD', product }), []);
+  const add = useCallback((product, discountPct = 0) => dispatch({ type: 'ADD', product, discountPct }), []);
   const remove = useCallback((id) => dispatch({ type: 'REMOVE', id }), []);
   const updateQty = useCallback((id, delta) => dispatch({ type: 'UPDATE_QTY', id, delta }), []);
   const clear = useCallback(() => {

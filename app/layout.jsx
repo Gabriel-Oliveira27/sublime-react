@@ -1,5 +1,6 @@
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
+import { ConfigProvider } from '@/context/ConfigContext';
 import { ToastProvider } from '@/context/ToastContext';
 import ToastContainer from '@/components/ui/ToastContainer';
 
@@ -25,14 +26,14 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <body>
         <ToastProvider>
+          <ConfigProvider>
           <CartProvider>
             {children}
             <ToastContainer />
           </CartProvider>
+        </ConfigProvider>
         </ToastProvider>
       </body>
     </html>
   );
 }
-
-

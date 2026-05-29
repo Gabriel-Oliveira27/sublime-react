@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { fetchProducts } from '@/lib/api';
 import { applyDiscount, parseImages, groupSlug } from '@/lib/utils';
+import { useDiscount } from '@/context/ConfigContext';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import Header from '@/components/layout/Header';
@@ -40,6 +41,7 @@ export default function ProductPage() {
   const { add, sidebarOpen, closeSidebar } = useCart();
   const { showToast }       = useToast();
 
+  const discountPct = useDiscount(group?.linha);
   const [group,         setGroup]         = useState(null);
   const [loading,       setLoading]       = useState(true);
   const [notFound,      setNotFound]      = useState(false);
@@ -100,7 +102,7 @@ export default function ProductPage() {
   const hasMoreDesc = rawDetails && stripMd(rawDetails).length > 0;
 
   const handleAdd = () => {
-    const result = add(selectedVar);
+    const result = add(selectedVar, discountPct);
     if (result !== false) showToast('Produto adicionado ao carrinho!', 'success');
     else showToast('Estoque insuficiente', 'error');
   };
