@@ -69,18 +69,7 @@ export default function CheckoutPage() {
   const [savedAddresses,   setSavedAddresses]   = useState([]);
   const [pickerDismissed,  setPickerDismissed]  = useState(false);
 
-  /* ── Mapa nome de estado -> sigla (retorno Nominatim em PT-BR) ── */
-  const STATE_NAME_TO_CODE = {
-    'Acre':'AC','Alagoas':'AL','Amapá':'AP','Amazonas':'AM','Bahia':'BA',
-    'Ceará':'CE','Distrito Federal':'DF','Espírito Santo':'ES','Goiás':'GO',
-    'Maranhão':'MA','Mato Grosso':'MT','Mato Grosso do Sul':'MS',
-    'Minas Gerais':'MG','Pará':'PA','Paraíba':'PB','Paraná':'PR',
-    'Pernambuco':'PE','Piauí':'PI','Rio de Janeiro':'RJ','Rio Grande do Norte':'RN',
-    'Rio Grande do Sul':'RS','Rondônia':'RO','Roraima':'RR','Santa Catarina':'SC',
-    'São Paulo':'SP','Sergipe':'SE','Tocantins':'TO',
-  };
-
-  /* ── Detectar localização via GPS + Nominatim (OpenStreetMap) ── */
+  /* ── Detectar localização via GPS + abrir mapa para confirmação ── */
   const doDetectLocation = () => {
     if (!navigator.geolocation) {
       showToast('Geolocalização não suportada pelo seu navegador.', 'error');
@@ -88,46 +77,15 @@ export default function CheckoutPage() {
     }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
+      (pos) => {
         try {
           const { latitude: lat, longitude: lon } = pos.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
-            { headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' } }
-          );
-          if (!res.ok) throw new Error('Nominatim error');
-          const data  = await res.json();
-          const addr  = data.address || {};
-
-          const street       = addr.road || addr.pedestrian || addr.path || '';
-          const number       = addr.house_number || '';
-          const neighborhood = addr.suburb || addr.neighbourhood || addr.quarter || addr.district || addr.city_district || '';
-          const city         = addr.city || addr.town || addr.village || addr.municipality || '';
-          const rawState     = addr.state || '';
-          const stateCode    = STATE_NAME_TO_CODE[rawState] || rawState.slice(0, 2).toUpperCase();
-          const rawCep       = (addr.postcode || '').replace(/\D/g, '');
-          const cep          = rawCep.length === 8 ? `${rawCep.slice(0,5)}-${rawCep.slice(5)}` : '';
-
-          setDelivery(d => ({
-            ...d,
-            street, number, neighborhood, city,
-            state: stateCode,
-            cep,
-            lat, lon,
-            distanceKm: null, shippingCost: null, shippingNote: '',
-          }));
-          setLocationDetected(true);
-          showToast('Localização detectada! Confirme os dados abaixo.', 'success');
-
-          // Já inicia cálculo de frete com as coordenadas reais
-          if (city && stateCode) {
-            await doCalculateShipping({ city, state: stateCode, cep: rawCep, lat, lon });
-          }
-        } catch {
-          // Nominatim falhou — abre mapa com as coords GPS para ajuste
+          // Abre o mapa com as coordenadas detectadas para o usuário confirmar
           setGpsFallbackCoords({ lat, lon });
           setShowMapModal(true);
-          showToast('Localização obtida — ajuste o pino no mapa para confirmar.', 'warning');
+          showToast('Localização detectada! Ajuste no mapa se necessário.', 'success');
+        } catch (err) {
+          showToast('Erro ao processar localização', 'error');
         } finally {
           setLocating(false);
         }
@@ -136,11 +94,10 @@ export default function CheckoutPage() {
         setLocating(false);
         if (err.code === 1)
           showToast('Permissão de localização negada. Preencha o endereço manualmente.', 'warning');
-        else {
-          // Não conseguiu GPS — abre mapa para ajuste manual
-          setGpsFallbackCoords(null);
-          setShowMapModal(true);
-        }
+        else if (err.code === 2)
+          showToast('Não foi possível obter sua localização. Tente novamente.', 'warning');
+        else
+          showToast('Erro ao detectar localização. Preencha o endereço manualmente.', 'warning');
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );

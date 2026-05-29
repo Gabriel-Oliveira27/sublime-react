@@ -23,7 +23,7 @@ function renderMarkdown(md) {
 }
 
 export default function ProductDescription({ detalhes }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const ref = useRef(null);
   const [height, setHeight] = useState(0);
 

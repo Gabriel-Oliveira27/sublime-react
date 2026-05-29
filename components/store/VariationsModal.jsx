@@ -1,17 +1,22 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { applyDiscount, parseImages } from '@/lib/utils';
-import { useDiscount } from '@/context/ConfigContext';
+import { useConfig } from '@/context/ConfigContext';
 import ProductImageCarousel from './ProductImageCarousel';
 import ProductDescription from './ProductDescription';
 import styles from './VariationsModal.module.css';
 
 export default function VariationsModal({ group, onClose }) {
   const { add } = useCart();
-  const discountPct = useDiscount(group?.linha);
   const { showToast } = useToast();
+  const { descontoGlobal, descontoLinhas } = useConfig();
+  
+  const discountPct = useMemo(() => {
+    if (group?.linha && descontoLinhas[group?.linha] > 0) return descontoLinhas[group?.linha];
+    return descontoGlobal;
+  }, [group?.linha, descontoLinhas, descontoGlobal]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
