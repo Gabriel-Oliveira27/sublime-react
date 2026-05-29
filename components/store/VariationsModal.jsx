@@ -3,12 +3,14 @@ import { useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { applyDiscount, parseImages } from '@/lib/utils';
+import { useDiscount } from '@/context/ConfigContext';
 import ProductImageCarousel from './ProductImageCarousel';
 import ProductDescription from './ProductDescription';
 import styles from './VariationsModal.module.css';
 
 export default function VariationsModal({ group, onClose }) {
   const { add } = useCart();
+  const discountPct = useDiscount(group?.linha);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function VariationsModal({ group, onClose }) {
           <ProductDescription detalhes={group.variations[0]?.detalhes} />
           <div className={styles.grid}>
             {group.variations.map((v, i) => {
-              const calc = applyDiscount(v.valor);
+              const calc = applyDiscount(v.valor, discountPct);
               const images = parseImages(v.imagem);
               return (
                 <div key={i} className={styles.card}>

@@ -3,12 +3,13 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { applyDiscount, parseImages, groupSlug } from '@/lib/utils';
+import { useDiscount } from '@/context/ConfigContext';
 import ProductImageCarousel from './ProductImageCarousel';
 import styles from './ProductCard.module.css';
 
-function PriceDisplay({ group, multi }) {
-  const minCalc   = applyDiscount(group.minPrice);
-  const firstCalc = applyDiscount(group.variations[0].valor);
+function PriceDisplay({ group, multi, discountPct }) {
+  const minCalc   = applyDiscount(group.minPrice, discountPct);
+  const firstCalc = applyDiscount(group.variations[0].valor, discountPct);
 
   if (multi && group.minPrice !== group.maxPrice) {
     return minCalc.hasDiscount ? (
@@ -52,6 +53,7 @@ export default function ProductCard({ group, onOpenVariations }) {
   const router          = useRouter();
   const { add }         = useCart();
   const { showToast }   = useToast();
+  const discountPct      = useDiscount(group.linha);
   const multi           = group.variations.length > 1;
   const first           = group.variations[0];
   const images          = parseImages(first.imagem);
@@ -66,7 +68,7 @@ export default function ProductCard({ group, onOpenVariations }) {
       onOpenVariations?.(group);
       return;
     }
-    const result = add(first);
+    const result = add(first, discountPct);
     if (result !== false) {
       showToast('Produto adicionado ao carrinho!', 'success');
     } else {
@@ -96,7 +98,7 @@ export default function ProductCard({ group, onOpenVariations }) {
             {group.litros && <span>{group.litros}</span>}
           </div>
         )}
-        <PriceDisplay group={group} multi={multi} />
+        <PriceDisplay group={group} multi={multi} discountPct={discountPct} />
         <div className={styles.stock}>{group.totalStock} em estoque</div>
 
         {/* Dois botões — stopPropagation para não acionar o onClick do card */}
