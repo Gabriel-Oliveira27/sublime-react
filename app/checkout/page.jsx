@@ -1,3 +1,4 @@
+// app/checkout/page.jsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,6 +12,7 @@ import {
   AlertTriangleIcon, CheckCircleIcon, InfoIcon, PackageIcon, ClipboardListIcon,
 } from '@/components/icons/Icons';
 import { useCart } from '@/context/CartContext';
+import LocationMapModal from '@/components/store/LocationMapModal';
 import { useToast } from '@/context/ToastContext';
 import { CONFIG } from '@/lib/config';
 import {
@@ -62,6 +64,8 @@ export default function CheckoutPage() {
   const [changeFor,       setChangeFor]       = useState('');
   const [locationDetected, setLocationDetected] = useState(false);
   const [locating,         setLocating]         = useState(false);
+  const [showMapModal,     setShowMapModal]     = useState(false);
+  const [gpsFallbackCoords, setGpsFallbackCoords] = useState(null);
   const [savedAddresses,   setSavedAddresses]   = useState([]);
   const [pickerDismissed,  setPickerDismissed]  = useState(false);
 
@@ -120,7 +124,10 @@ export default function CheckoutPage() {
             await doCalculateShipping({ city, state: stateCode, cep: rawCep, lat, lon });
           }
         } catch {
-          showToast('Não foi possível identificar seu endereço. Preencha manualmente.', 'warning');
+          // Nominatim falhou — abre mapa com as coords GPS para ajuste
+          setGpsFallbackCoords({ lat, lon });
+          setShowMapModal(true);
+          showToast('Localização obtida — ajuste o pino no mapa para confirmar.', 'warning');
         } finally {
           setLocating(false);
         }
@@ -129,8 +136,11 @@ export default function CheckoutPage() {
         setLocating(false);
         if (err.code === 1)
           showToast('Permissão de localização negada. Preencha o endereço manualmente.', 'warning');
-        else
-          showToast('Não foi possível obter sua localização. Tente pelo CEP.', 'error');
+        else {
+          // Não conseguiu GPS — abre mapa para ajuste manual
+          setGpsFallbackCoords(null);
+          setShowMapModal(true);
+        }
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
@@ -615,6 +625,12 @@ export default function CheckoutPage() {
                         <span style={{ fontSize:'.78rem', color:'var(--text-muted)' }}>
                           Usa o GPS do seu dispositivo — gratuito e sem compartilhar seus dados
                         </span>
+                        <button
+                          onClick={() => setShowMapModal(true)}
+                          style={{ background:'none', border:'none', cursor:'pointer', color:'var(--accent)', fontSize:'.8rem', fontWeight:600, fontFamily:"'DM Sans', sans-serif", padding:0 }}
+                        >
+                          Prefiro escolher no mapa
+                        </button>
                       </div>
                     ) : (
                       <div style={{
@@ -903,6 +919,36 @@ export default function CheckoutPage() {
           pickupDate={delivery.pickupDate}
           pickupTime={delivery.pickupTime}
           onClose={() => setSuccessData(null)}
+        />
+      )}
+      {/* Mapa de localização — GPS fallback ou escolha manual */}
+      {showMapModal && (
+        <LocationMapModal
+          initialLat={gpsFallbackCoords?.lat}
+          initialLon={gpsFallbackCoords?.lon}
+          onConfirm={(addr) => {
+            const rawCep = (addr.cep || '').replace(/\D/g,'');
+            setDelivery(d => ({
+              ...d,
+              street:       addr.street       || d.street,
+              number:       addr.number       || d.number,
+              neighborhood: addr.neighborhood || d.neighborhood,
+              city:         addr.city         || d.city,
+              state:        addr.state        || d.state,
+              cep:          rawCep.length===8 ? rawCep.slice(0,5)+'-'+rawCep.slice(5) : d.cep,
+              referencia:   addr.referencia   || d.referencia,
+              lat:          addr.lat,
+              lon:          addr.lon,
+              shippingCost: null, distanceKm: null,
+            }));
+            setLocationDetected(true);
+            setShowMapModal(false);
+            showToast('Localização confirmada! Confira os dados abaixo.', 'success');
+            if (addr.city && addr.state) {
+              doCalculateShipping({ city: addr.city, state: addr.state, cep: rawCep, lat: addr.lat, lon: addr.lon });
+            }
+          }}
+          onClose={() => setShowMapModal(false)}
         />
       )}
     </>

@@ -1,5 +1,8 @@
 'use client';
-import { applyDiscount, parseImages } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import { useCart } from '@/context/CartContext';
+import { useToast } from '@/context/ToastContext';
+import { applyDiscount, parseImages, groupSlug } from '@/lib/utils';
 import ProductImageCarousel from './ProductImageCarousel';
 import styles from './ProductCard.module.css';
 
@@ -45,13 +48,36 @@ function PriceDisplay({ group, multi }) {
   );
 }
 
-export default function ProductCard({ group, onOpenVariations, onOpenDetail }) {
-  const multi  = group.variations.length > 1;
-  const first  = group.variations[0];
-  const images = parseImages(first.imagem);
+export default function ProductCard({ group, onOpenVariations }) {
+  const router          = useRouter();
+  const { add }         = useCart();
+  const { showToast }   = useToast();
+  const multi           = group.variations.length > 1;
+  const first           = group.variations[0];
+  const images          = parseImages(first.imagem);
+  const slug            = groupSlug(group);
+
+  const goToProduct = () => router.push(`/produto/${slug}`);
+
+  const handleAddToCart = (e) => {
+    e.stopPropagation();
+    if (multi) {
+      // Multi-variation: open picker modal
+      onOpenVariations?.(group);
+      return;
+    }
+    const result = add(first);
+    if (result !== false) {
+      showToast('Produto adicionado ao carrinho!', 'success');
+    } else {
+      showToast('Estoque insuficiente', 'error');
+    }
+  };
 
   return (
-    <article className={styles.card}>
+    <article className={styles.card} onClick={goToProduct} role="button" tabIndex={0}
+      onKeyDown={e => e.key === 'Enter' && goToProduct()}>
+
       <div className={styles.imgWrap}>
         {(multi || group.totalStock <= 5) && (
           <div className={styles.badges}>
@@ -72,12 +98,20 @@ export default function ProductCard({ group, onOpenVariations, onOpenDetail }) {
         )}
         <PriceDisplay group={group} multi={multi} />
         <div className={styles.stock}>{group.totalStock} em estoque</div>
-        <button
-          className={styles.btn}
-          onClick={() => multi ? onOpenVariations(group) : onOpenDetail(group)}
-        >
-          {multi ? 'Ver Opções' : 'Ver Produto'}
-        </button>
+
+        {/* Dois botões — stopPropagation para não acionar o onClick do card */}
+        <div className={styles.actions} onClick={e => e.stopPropagation()}>
+          <button className={styles.btnCart} onClick={handleAddToCart}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            {multi ? 'Escolher' : 'Carrinho'}
+          </button>
+          <button className={styles.btnView} onClick={e => { e.stopPropagation(); goToProduct(); }}>
+            Ver Produto
+          </button>
+        </div>
       </div>
     </article>
   );
