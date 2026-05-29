@@ -1,10 +1,10 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { fetchProducts } from '@/lib/api';
 import { applyDiscount, parseImages, groupSlug } from '@/lib/utils';
-import { useDiscount } from '@/context/ConfigContext';
+import { useConfig } from '@/context/ConfigContext';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import Header from '@/components/layout/Header';
@@ -40,9 +40,13 @@ export default function ProductPage() {
   const router              = useRouter();
   const { add, sidebarOpen, closeSidebar } = useCart();
   const { showToast }       = useToast();
+  const { descontoGlobal, descontoLinhas } = useConfig();
 
-  const discountPct = useDiscount(group?.linha);
   const [group,         setGroup]         = useState(null);
+  const discountPct = useMemo(() => {
+    if (group?.linha && descontoLinhas[group.linha] > 0) return descontoLinhas[group.linha];
+    return descontoGlobal;
+  }, [group?.linha, descontoLinhas, descontoGlobal]);
   const [loading,       setLoading]       = useState(true);
   const [notFound,      setNotFound]      = useState(false);
   const [selectedVar,   setSelectedVar]   = useState(null);

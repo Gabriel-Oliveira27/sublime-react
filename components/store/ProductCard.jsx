@@ -1,9 +1,10 @@
 'use client';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { applyDiscount, parseImages, groupSlug } from '@/lib/utils';
-import { useDiscount } from '@/context/ConfigContext';
+import { useConfig } from '@/context/ConfigContext';
 import ProductImageCarousel from './ProductImageCarousel';
 import styles from './ProductCard.module.css';
 
@@ -53,7 +54,13 @@ export default function ProductCard({ group, onOpenVariations }) {
   const router          = useRouter();
   const { add }         = useCart();
   const { showToast }   = useToast();
-  const discountPct      = useDiscount(group.linha);
+  const { descontoGlobal, descontoLinhas } = useConfig();
+  
+  const discountPct = useMemo(() => {
+    if (group?.linha && descontoLinhas[group.linha] > 0) return descontoLinhas[group.linha];
+    return descontoGlobal;
+  }, [group?.linha, descontoLinhas, descontoGlobal]);
+  
   const multi           = group.variations.length > 1;
   const first           = group.variations[0];
   const images          = parseImages(first.imagem);
