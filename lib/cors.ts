@@ -1,7 +1,5 @@
 export const ALLOWED_ORIGIN =
   process.env.DASHBOARD_ORIGIN ?? 'https://gabriel-oliveira27.github.io'
-  process.env.DASHBOARD_ORIGIN ?? 'https://dashboard-vendedor.vercel.app'
-
 
 export const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin':      ALLOWED_ORIGIN,
