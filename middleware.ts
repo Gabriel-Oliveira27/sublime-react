@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 
 const ALLOWED_ORIGIN =
   process.env.DASHBOARD_ORIGIN ?? 'https://gabriel-oliveira27.github.io'
+  process.env.DASHBOARD_ORIGIN ?? 'https://dashboard-vendedor.vercel.app'
 
 const CORS = {
   'Access-Control-Allow-Origin':      ALLOWED_ORIGIN,
