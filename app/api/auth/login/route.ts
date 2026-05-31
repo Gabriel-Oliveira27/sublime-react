@@ -1,3 +1,4 @@
+// app/api/auth/login/route.ts
 // Caminho: app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
@@ -6,6 +7,7 @@ import { COOKIE_OPTIONS } from '@/lib/middleware'
 import { CORS_HEADERS } from '@/lib/cors'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import { checkRateLimit } from './ratelimit'
 
 const schema = z.object({
   email: z.string().email(),
@@ -13,6 +15,16 @@ const schema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  // Rate limiting — 10 tentativas por IP a cada 15 minutos
+  const ip  = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const rl  = checkRateLimit(ip)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { erro: 'Muitas tentativas. Tente novamente em alguns minutos.' },
+      { status: 429, headers: { ...CORS_HEADERS, 'Retry-After': String(rl.retryAfterSec) } }
+    )
+  }
+
   try {
     const body   = await req.json()
     const parsed = schema.safeParse(body)
@@ -26,12 +38,16 @@ export async function POST(req: NextRequest) {
     })
 
     if (!usuario || !usuario.ativo) {
-      return NextResponse.json({ erro: 'Usuário não encontrado' }, { status: 401, headers: CORS_HEADERS })
+      // Normalização de tempo: executa bcrypt mesmo quando usuário não existe
+      // para que o tempo de resposta seja idêntico ao de senha incorreta,
+      // impedindo User Enumeration por timing (CVE class: CWE-203)
+      await bcrypt.compare(senha, '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy')
+      return NextResponse.json({ erro: 'Credenciais inválidas' }, { status: 401, headers: CORS_HEADERS })
     }
 
     const senhaCorreta = await bcrypt.compare(senha, usuario.senha)
     if (!senhaCorreta) {
-      return NextResponse.json({ erro: 'Senha incorreta' }, { status: 401, headers: CORS_HEADERS })
+      return NextResponse.json({ erro: 'Credenciais inválidas' }, { status: 401, headers: CORS_HEADERS })
     }
 
     const token = await signJwt({
