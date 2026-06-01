@@ -1,4 +1,3 @@
-// Caminho: app/api/usuarios/[id]/route.ts
 import { CORS_HEADERS, corsOptions } from '@/lib/cors'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
@@ -6,11 +5,14 @@ import { autenticar } from '@/lib/middleware'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
+
+const TEMAS = ['dark', 'light', 'violet', 'midnight', 'forest', 'rose'] as const
+
 const updateSchema = z.object({
   nome:       z.string().min(2).optional(),
   apelido:    z.string().min(1).optional(),
   foto:       z.string().url().nullable().optional(),
-  tema:       z.enum(['dark', 'light', 'violet']).optional(),
+  tema:       z.enum(TEMAS).optional(),
   ativo:      z.boolean().optional(),
   senha:      z.string().min(6).optional(),
   permissoes: z.object({
@@ -42,15 +44,18 @@ export async function PATCH(
     const body   = await req.json()
     const parsed = updateSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ erro: 'Dados inválidos' }, { status: 400, headers: CORS_HEADERS })
+      return NextResponse.json(
+        { erro: 'Dados inválidos', detalhes: parsed.error.flatten() },
+        { status: 400, headers: CORS_HEADERS }
+      )
     }
 
     const { senha, permissoes, ativo, ...resto } = parsed.data
-    const data: Record<string, unknown> = { ...resto } // inclui nome, apelido, foto, tema
+    const data: Record<string, unknown> = { ...resto }
 
-    if (ehAdmin && permissoes) data.permissoes = permissoes
-    if (ehAdmin && typeof ativo === 'boolean') data.ativo = ativo
-    if (senha) data.senha = await bcrypt.hash(senha, 10)
+    if (ehAdmin && permissoes)              data.permissoes = permissoes
+    if (ehAdmin && typeof ativo === 'boolean') data.ativo   = ativo
+    if (senha)                              data.senha      = await bcrypt.hash(senha, 10)
 
     const atualizado = await prisma.usuario.update({
       where:  { id: idNum },
@@ -76,20 +81,29 @@ export async function DELETE(
   if (auth instanceof NextResponse) return auth
 
   if (!auth.usuario.isAdmin) {
-    return NextResponse.json({ erro: 'Acesso restrito a administradores' }, { status: 403, headers: CORS_HEADERS })
+    return NextResponse.json(
+      { erro: 'Acesso restrito a administradores' },
+      { status: 403, headers: CORS_HEADERS }
+    )
   }
 
   const { id } = await params
   const idNum   = parseInt(id)
 
   if (auth.usuario.id === idNum) {
-    return NextResponse.json({ erro: 'Você não pode desativar sua própria conta' }, { status: 400, headers: CORS_HEADERS })
+    return NextResponse.json(
+      { erro: 'Você não pode desativar sua própria conta' },
+      { status: 400, headers: CORS_HEADERS }
+    )
   }
 
   try {
     const alvo = await prisma.usuario.findUnique({ where: { id: idNum } })
     if (alvo?.isAdmin) {
-      return NextResponse.json({ erro: 'Não é possível remover outro administrador' }, { status: 400, headers: CORS_HEADERS })
+      return NextResponse.json(
+        { erro: 'Não é possível remover outro administrador' },
+        { status: 400, headers: CORS_HEADERS }
+      )
     }
 
     await prisma.usuario.update({ where: { id: idNum }, data: { ativo: false } })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { autenticar } from '@/lib/middleware'
+import { CORS_HEADERS, corsOptions } from '@/lib/cors'
 
 export async function GET(req: NextRequest) {
   const auth = await autenticar(req)
@@ -8,10 +9,10 @@ export async function GET(req: NextRequest) {
 
   try {
     const pedidos = await prisma.pedido.findMany({ orderBy: { dataCompra: 'desc' } })
-    return NextResponse.json(pedidos)
+    return NextResponse.json(pedidos, { headers: CORS_HEADERS })
   } catch (err) {
     console.error('[GET /api/pedidos]', err)
-    return NextResponse.json({ erro: 'Erro interno' }, { status: 500 })
+    return NextResponse.json({ erro: 'Erro interno' }, { status: 500, headers: CORS_HEADERS })
   }
 }
 
@@ -32,44 +33,50 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ erro: 'Dados obrigatórios ausentes' }, { status: 400 })
     }
 
-    // ── Valida e decrementa estoque ───────────────────────────────────────
+    // Validação rápida de tipos antes de tocar no banco
     for (const item of items) {
       const prodId = Number(item.id)
       const qty    = Number(item.qty ?? 1)
-      const prod   = await prisma.estoque.findUnique({ where: { id: prodId } })
-
-      if (!prod) {
-        return NextResponse.json(
-          { erro: `Produto não encontrado (id=${prodId}). Recarregue a página e tente novamente.` },
-          { status: 409 }
-        )
-      }
-      if (prod.qtd < qty) {
-        return NextResponse.json(
-          { erro: `Estoque insuficiente para "${prod.produto}". Disponível: ${prod.qtd}.` },
-          { status: 409 }
-        )
-      }
-
-      await prisma.estoque.update({
-        where: { id: prodId },
-        data:  { qtd: { decrement: qty } },
-      })
+      if (!Number.isInteger(prodId) || prodId <= 0)
+        return NextResponse.json({ erro: `ID de produto inválido: ${item.id}` }, { status: 400 })
+      if (!Number.isInteger(qty) || qty <= 0 || qty > 999)
+        return NextResponse.json({ erro: `Quantidade inválida para o item ${prodId}` }, { status: 400 })
     }
 
-    // ── Dados auxiliares ─────────────────────────────────────────────────
     const cpfLimpo    = customer.cpf?.replace(/\D/g, '') || null
     const changeFor   = payment.changeFor ? parseFloat(String(payment.changeFor)) : null
     const valorALevar = changeFor && changeFor > 0 ? +(changeFor - total).toFixed(2) : null
 
-    // ── Cria pedido dentro de transação — idRastreio sem gaps ─────────────
-    // Lê o maior VD-XXX existente e incrementa atomicamente.
-    // Nenhum __TEMP__ necessário; funciona mesmo com pedidos cancelados/deletados.
+    // ─────────────────────────────────────────────────────────────────────
+    // CORREÇÃO CRÍTICA: tudo dentro de uma única transação.
+    //
+    // Antes: o loop de decremento ficava FORA do $transaction. Se a criação
+    // do pedido falhasse depois (ex: erro de constraint, timeout), o estoque
+    // já teria sido decrementado sem nenhum pedido gerado — stock leak.
+    //
+    // Agora: o findUnique + update de cada item e o create do pedido são
+    // atomicamente uma coisa só. Qualquer falha reverte tudo.
+    // ─────────────────────────────────────────────────────────────────────
     const pedido = await prisma.$transaction(async (tx) => {
-      // Busca TODOS os idRastreio VD- e encontra o maior número real.
-      // Ordenar por `id` (autoincrement) não é confiável — se um pedido
-      // com id maior tiver um VD menor (edição manual, seed, etc.) o próximo
-      // número seria errado. Achar o max explicitamente é simples e correto.
+
+      // 1. Valida e decrementa cada item do estoque
+      for (const item of items) {
+        const prodId = Number(item.id)
+        const qty    = Number(item.qty ?? 1)
+
+        const prod = await tx.estoque.findUnique({ where: { id: prodId } })
+        if (!prod)
+          throw new Error(`Produto não encontrado (id=${prodId}). Recarregue a página.`)
+        if (prod.qtd < qty)
+          throw new Error(`Estoque insuficiente para "${prod.produto}". Disponível: ${prod.qtd}.`)
+
+        await tx.estoque.update({
+          where: { id: prodId },
+          data:  { qtd: { decrement: qty } },
+        })
+      }
+
+      // 2. Gera idRastreio sem gaps dentro da mesma tx
       const todos = await tx.pedido.findMany({
         where:  { idRastreio: { startsWith: 'VD-' } },
         select: { idRastreio: true },
@@ -80,6 +87,7 @@ export async function POST(req: NextRequest) {
       }, 0)
       const idRastreio = `VD-${String(lastNum + 1).padStart(3, '0')}`
 
+      // 3. Cria o pedido
       return tx.pedido.create({
         data: {
           idRastreio,
@@ -88,6 +96,8 @@ export async function POST(req: NextRequest) {
           pedido:          items,
           endereco:        delivery.address ?? delivery.type,
           totalVenda:      total,
+          subtotal:        items.reduce((s: number, i: any) =>
+                             s + parseFloat(i.valor ?? '0') * (i.qty ?? 1), 0),
           metodoPagamento: toMetodoPagamento(payment.method),
           cupom:           coupon || null,
           frete:           delivery.frete ?? 0,
@@ -96,9 +106,9 @@ export async function POST(req: NextRequest) {
           valorALevar:     valorALevar ?? null,
         },
       })
-    })
+    }, { timeout: 15_000 })
 
-    // ── Upsert Cliente (não-crítico) ──────────────────────────────────────
+    // Upsert Cliente — não-crítico, fora da tx principal
     if (cpfLimpo) {
       try {
         const enderecoStr = enderecoEstruturado ? JSON.stringify(enderecoEstruturado) : null
@@ -124,17 +134,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, orderId: pedido.idRastreio }, { status: 201 })
   } catch (err: any) {
     console.error('[POST /api/pedidos]', err)
-    return NextResponse.json({ erro: err.message ?? 'Erro ao registrar pedido' }, { status: 500 })
+    const isBusinessErr = err.message?.includes('insuficiente') ||
+                          err.message?.includes('não encontrado')
+    return NextResponse.json(
+      { erro: err.message ?? 'Erro ao registrar pedido' },
+      { status: isBusinessErr ? 409 : 500 }
+    )
   }
 }
 
-export async function OPTIONS() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    },
-  })
-}
+// OPTIONS usa o corsOptions() do lib/cors que já lê DASHBOARD_ORIGIN —
+// consistente com o middleware global e as demais rotas.
+export function OPTIONS() { return corsOptions() }
