@@ -1,4 +1,3 @@
-// app/checkout/page.jsx
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -12,6 +11,7 @@ import {
   AlertTriangleIcon, CheckCircleIcon, InfoIcon, PackageIcon, ClipboardListIcon,
 } from '@/components/icons/Icons';
 import { useCart } from '@/context/CartContext';
+import { useConfig } from '@/context/ConfigContext';
 import LocationMapModal from '@/components/store/LocationMapModal';
 import { useToast } from '@/context/ToastContext';
 import { CONFIG } from '@/lib/config';
@@ -33,6 +33,7 @@ const INITIAL_COUPON = { code: null, type: null, value: 0, discount: 0, valid: f
 export default function CheckoutPage() {
   const { items, isEmpty, clear } = useCart();
   const { showToast }             = useToast();
+  const dynamicConfig             = useConfig();
   const router                    = useRouter();
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
@@ -49,8 +50,24 @@ export default function CheckoutPage() {
   const [delivery,  setDelivery]  = useState(INITIAL_DELIVERY);
   const [pixKey,    setPixKey]    = useState('');
   const [payment,   setPayment]   = useState({ method: '', installments: 1 });
+  const [paymentConfig, setPaymentConfig] = useState({ pix: true, credito: true, dinheiro: true });
 
-  // Busca a chave PIX do banco quando o método PIX é selecionado
+  // Busca métodos de pagamento habilitados e chave PIX da API pública
+  useEffect(() => {
+    fetch('/api/config/public')
+      .then(r => r.json())
+      .then(data => {
+        if (data.pix) setPixKey(data.pix);
+        setPaymentConfig({
+          pix:      data.pagamento_pix      !== 'false',
+          credito:  data.pagamento_credito  !== 'false',
+          dinheiro: data.pagamento_dinheiro !== 'false',
+        });
+      })
+      .catch(() => {});
+  }, []);
+
+  // Busca a chave PIX do banco quando o método PIX é selecionado (fallback se ainda não carregou)
   const handleSelectPayment = (method) => {
     setPayment(p => ({ ...p, method }));
     if (method === 'PIX' && !pixKey) {
@@ -229,12 +246,21 @@ export default function CheckoutPage() {
 
     setLoading(true); setLoadTxt('Calculando frete…');
     try {
-      if (!CONFIG.ORIGIN.lat) {
-        const c = await geocodeAddress(`${CONFIG.ORIGIN.STREET}, ${CONFIG.ORIGIN.CITY}, ${CONFIG.ORIGIN.STATE}`);
+      // Usa coordenadas de origem do banco (salvas no dashboard via CEP).
+      // Se ainda não há coords no banco, faz geocode do endereço hardcoded como fallback.
+      let originLat = dynamicConfig.origemLat ?? CONFIG.ORIGIN.lat;
+      let originLon = dynamicConfig.origemLon ?? CONFIG.ORIGIN.lon;
+
+      if (!originLat) {
+        const endOrigem = dynamicConfig.origemEndereco ||
+          `${CONFIG.ORIGIN.STREET}, ${CONFIG.ORIGIN.CITY}, ${CONFIG.ORIGIN.STATE}`;
+        const c = await geocodeAddress(endOrigem);
+        if (c) { originLat = c.lat; originLon = c.lon; }
+        // Grava nas vars legadas para cache dentro da sessão
         if (c) { CONFIG.ORIGIN.lat = c.lat; CONFIG.ORIGIN.lon = c.lon; }
       }
 
-      // Se já temos coordenadas GPS (via detecção automática), usa diretamente
+      // Coordenadas de destino
       let destCoords = (overrides.lat && overrides.lon)
         ? { lat: overrides.lat, lon: overrides.lon }
         : null;
@@ -244,17 +270,19 @@ export default function CheckoutPage() {
       }
       if (!destCoords) destCoords = await geocodeAddress(`${city}, ${stUF}, ${cep}`);
 
-      const distKm = (destCoords && CONFIG.ORIGIN.lat)
-        ? haversine(CONFIG.ORIGIN.lat, CONFIG.ORIGIN.lon, destCoords.lat, destCoords.lon)
+      const distKm = (destCoords && originLat)
+        ? haversine(originLat, originLon, destCoords.lat, destCoords.lon)
         : (city.toLowerCase() === CONFIG.ORIGIN.CITY.toLowerCase() ? 5 : 15);
 
-      const result = computeShippingCost(subtotal, distKm, city);
+      // Passa dynamicConfig para usar frete do banco (modelo KM ou FIXO com faixas).
+      // Se não houver config de frete no banco ainda, cai no fallback hardcoded.
+      const result = computeShippingCost(subtotal, distKm, city, dynamicConfig);
       setDelivery(d => ({ ...d, distanceKm: distKm, shippingCost: result.cost, shippingNote: result.note || '' }));
       showToast('Frete calculado!', 'success');
     } catch {
       showToast('Erro ao calcular frete.', 'error');
     } finally { setLoading(false); }
-  }, [delivery, subtotal]);
+  }, [delivery, subtotal, dynamicConfig]);
 
   /* ── Submit ── */
   const finishOrder = async () => {
@@ -316,7 +344,7 @@ export default function CheckoutPage() {
 
       if (result.success) {
         /* Non-critical — wrapped so it never blocks the success screen */
-        try { if (coupon.code) await consumeCoupon(coupon.code); } catch { /* ignore */ }
+        try { if (coupon.code) await consumeCoupon(coupon.code, result.orderId); } catch { /* ignore */ }
 
         /* CRITICAL: set guard BEFORE clear() so isEmpty effect doesn't redirect */
         orderPlacedRef.current = true;
@@ -766,10 +794,10 @@ export default function CheckoutPage() {
 
                 <div className={styles.payMethods}>
                   {[
-                    { key:'PIX',      Icon: PixIcon,        title:'PIX',              sub:'Aprovação imediata' },
-                    { key:'Dinheiro', Icon: BanknoteIcon,   title:'Dinheiro',         sub:'Pagar na entrega/retirada' },
-                    { key:'Credito',  Icon: CreditCardIcon, title:'Cartão de Crédito',sub:'Parcelamento disponível' },
-                  ].map(({ key, Icon, title, sub }) => (
+                    { key:'PIX',      Icon: PixIcon,        title:'PIX',              sub:'Aprovação imediata',        enabled: paymentConfig.pix      },
+                    { key:'Dinheiro', Icon: BanknoteIcon,   title:'Dinheiro',         sub:'Pagar na entrega/retirada', enabled: paymentConfig.dinheiro  },
+                    { key:'Credito',  Icon: CreditCardIcon, title:'Cartão de Crédito',sub:'Parcelamento disponível',   enabled: paymentConfig.credito   },
+                  ].filter(m => m.enabled).map(({ key, Icon, title, sub }) => (
                     <div key={key}
                       className={`${styles.payMethod} ${payment.method === key ? styles.selected : ''}`}
                     onClick={() => handleSelectPayment(key)}
