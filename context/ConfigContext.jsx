@@ -1,25 +1,26 @@
 'use client';
 import { createContext, useContext, useEffect, useState } from 'react';
 
+const DEFAULT_FRETE = {
+  modelo: 'VALOR',
+  tiersValor: [
+    { ate: 129, taxa: 0 }, { ate: 200, taxa: 1.50 }, { ate: 270, taxa: 3.00 },
+    { ate: 349, taxa: 5.00 }, { ate: 419, taxa: 7.00 }, { ate: null, taxa: 10.00 },
+  ],
+  origemLat: null, origemLon: null,
+  origemEndereco: '', origemCep: '', origemCidade: '', origemUF: '',
+  custoKm: 1.50, freteGratisAteKm: 0,
+  valorFixo: 0, valorCidadeOrigem: 0, valorDemais: 0, cidadesEspeciais: [],
+};
+
 const DEFAULTS = {
-  // Descontos
   descontoGlobal:  0,
   descontoLinhas:  { FREEZER:0, AQUECER:0, CONSERVAR:0, PREPARAR:0, SERVIR:0, ARMAZENAR:0 },
-  // Pedidos
   whatsappAtivo:     true,
   pagamentoPix:      true,
   pagamentoCredito:  true,
   pagamentoDinheiro: true,
-  // Frete — antes ausentes; a loja usava CONFIG.SHIPPING_TIERS hardcoded
-  freteModelo:        'FIXO',
-  freteFaixas:        null,
-  freteCustoKm:       1.50,
-  freteGratisAcimaKm: 0,
-  // Origem — antes ausentes; a loja usava CONFIG.ORIGIN.* hardcoded
-  origemEndereco: '',
-  origemLat:      null,
-  origemLon:      null,
-  origemCep:      '',
+  frete: DEFAULT_FRETE,
   loaded: false,
 };
 
@@ -46,14 +47,8 @@ export function ConfigProvider({ children }) {
           pagamentoPix:      data.pagamento_pix      !== 'false',
           pagamentoCredito:  data.pagamento_credito  !== 'false',
           pagamentoDinheiro: data.pagamento_dinheiro !== 'false',
-          freteModelo:        data.frete_modelo          || 'FIXO',
-          freteFaixas:        data.frete_faixas          || null,
-          freteCustoKm:       parseFloat(data.frete_custo_km)        || 1.50,
-          freteGratisAcimaKm: parseFloat(data.frete_gratis_acima_km) || 0,
-          origemEndereco: data.origem_endereco || '',
-          origemLat:      data.origem_lat ? parseFloat(data.origem_lat) : null,
-          origemLon:      data.origem_lon ? parseFloat(data.origem_lon) : null,
-          origemCep:      data.origem_cep || '',
+          // Frete vem como objeto completo — mantém defaults para campos ausentes
+          frete: data.frete ? { ...DEFAULT_FRETE, ...data.frete } : DEFAULT_FRETE,
           loaded: true,
         });
       })
@@ -71,24 +66,8 @@ function clamp(n) { return Math.max(0, Math.min(100, n)); }
 
 export const useConfig = () => useContext(ConfigContext);
 
-/**
- * Retorna o desconto correto para um produto de uma linha.
- * Prioridade: desconto de linha específica > desconto global > 0.
- */
 export function useDiscount(linha) {
   const { descontoGlobal, descontoLinhas } = useConfig();
   if (linha && descontoLinhas[linha] > 0) return descontoLinhas[linha];
   return descontoGlobal;
-}
-
-/**
- * Retorna as faixas de frete parseadas (ou null se não configurado/inválido).
- */
-export function useFreteFaixas() {
-  const { freteFaixas } = useConfig();
-  if (!freteFaixas) return null;
-  try {
-    const parsed = JSON.parse(freteFaixas);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch { return null; }
 }
