@@ -46,13 +46,17 @@ function serialize(f: any) {
   }
 }
 
-// ── GET — público (loja precisa sem auth) ─────────────────────────────────────
+// ── GET — público (loja é same-origin; dashboard precisa de CORS com credenciais) ──
 export async function GET() {
   try {
     const frete = await prisma.freteConfig.findUnique({ where: { id: FRETE_ID } })
     const data  = frete ? serialize(frete) : defaultFrete()
     return NextResponse.json(data, {
-      headers: { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' },
+      // CORS_HEADERS usa DASHBOARD_ORIGIN (variável de ambiente), não '*'.
+      // Browsers bloqueiam 'Access-Control-Allow-Origin: *' quando a requisição
+      // inclui credenciais (cookies). Como o apiFetch do dashboard sempre envia
+      // credentials:'include', precisamos de uma origem específica aqui.
+      headers: { ...CORS_HEADERS, 'Cache-Control': 'no-store' },
     })
   } catch (err) {
     console.error('[GET /api/frete]', err)
