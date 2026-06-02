@@ -194,11 +194,21 @@ export default function CheckoutPage() {
           .catch(() => {});
       }
     }
-    if (step === 2 && delivery.type === 'entrega' &&
-        (delivery.shippingCost == null || delivery.shippingCost === 'pending')) {
-      try { setLoading(true); setLoadTxt('Calculando frete…'); await doCalculateShipping(); }
-      catch { showToast('Não foi possível calcular o frete agora.', 'warning'); }
-      finally { setLoading(false); }
+    if (step === 2 && delivery.type === 'entrega') {
+      const modelo = dynamicConfig?.frete?.modelo ?? 'VALOR';
+      // FIXO e VALOR: calcula imediatamente sem precisar de endereço/geocode
+      const autoCalc = modelo === 'FIXO' || modelo === 'VALOR';
+      // CIDADE: calcula se já tiver a cidade (vem do CEP que é obrigatório no step 2)
+      const cidadeCalc = modelo === 'CIDADE' && !!delivery.city;
+      // KM: só calcula se não tiver custo ainda (vai precisar do botão "Calcular frete")
+      const needsCalc = autoCalc || cidadeCalc ||
+        (modelo === 'KM' && (delivery.shippingCost == null || delivery.shippingCost === 'pending'));
+
+      if (needsCalc) {
+        try { setLoading(true); setLoadTxt('Calculando frete…'); await doCalculateShipping(); }
+        catch { showToast('Não foi possível calcular o frete agora.', 'warning'); }
+        finally { setLoading(false); }
+      }
     }
     goTo(step + 1);
   };
@@ -239,43 +249,54 @@ export default function CheckoutPage() {
 
   /* ── Shipping ── */
   const doCalculateShipping = useCallback(async (overrides = {}) => {
+    const modelo = dynamicConfig?.frete?.modelo ?? 'VALOR';
+
+    // FIXO e VALOR não precisam de endereço — calculam imediatamente
+    if (modelo === 'FIXO' || modelo === 'VALOR') {
+      const result = computeShippingCost(subtotal, null, '', dynamicConfig);
+      setDelivery(d => ({ ...d, shippingCost: result.cost, shippingNote: result.note || '' }));
+      return;
+    }
+
+    // CIDADE — precisa de cidade (vem do CEP), não precisa de geocodificação
     const city = overrides.city  || delivery.city;
     const stUF = overrides.state || delivery.state;
-    const cep  = (overrides.cep  || delivery.cep).replace(/\D/g,'');
-    if (!city || !stUF || !cep) { showToast('Informe CEP, cidade e estado', 'error'); return; }
+    const cep  = (overrides.cep  || delivery.cep).replace(/\D/g, '');
+
+    if (modelo === 'CIDADE') {
+      if (!city) { showToast('Informe o CEP para identificar a cidade.', 'error'); return; }
+      const result = computeShippingCost(subtotal, null, city, dynamicConfig);
+      setDelivery(d => ({ ...d, shippingCost: result.cost, shippingNote: result.note || '' }));
+      return;
+    }
+
+    // KM — precisa de geocodificação de origem e destino
+    if (!city || !stUF || !cep) { showToast('Informe CEP, cidade e estado.', 'error'); return; }
 
     setLoading(true); setLoadTxt('Calculando frete…');
     try {
-      // Usa coordenadas de origem do banco (salvas no dashboard via CEP).
-      // Se ainda não há coords no banco, faz geocode do endereço hardcoded como fallback.
-      let originLat = dynamicConfig.origemLat ?? CONFIG.ORIGIN.lat;
-      let originLon = dynamicConfig.origemLon ?? CONFIG.ORIGIN.lon;
+      // Coordenadas de origem: banco > fallback geocode
+      let originLat = dynamicConfig?.frete?.origemLat ?? CONFIG.ORIGIN.lat;
+      let originLon = dynamicConfig?.frete?.origemLon ?? CONFIG.ORIGIN.lon;
 
       if (!originLat) {
-        const endOrigem = dynamicConfig.origemEndereco ||
+        const endOrigem = dynamicConfig?.frete?.origemEndereco ||
           `${CONFIG.ORIGIN.STREET}, ${CONFIG.ORIGIN.CITY}, ${CONFIG.ORIGIN.STATE}`;
         const c = await geocodeAddress(endOrigem);
-        if (c) { originLat = c.lat; originLon = c.lon; }
-        // Grava nas vars legadas para cache dentro da sessão
-        if (c) { CONFIG.ORIGIN.lat = c.lat; CONFIG.ORIGIN.lon = c.lon; }
+        if (c) { originLat = c.lat; originLon = c.lon; CONFIG.ORIGIN.lat = c.lat; CONFIG.ORIGIN.lon = c.lon; }
       }
 
       // Coordenadas de destino
-      let destCoords = (overrides.lat && overrides.lon)
-        ? { lat: overrides.lat, lon: overrides.lon }
-        : null;
-
-      if (!destCoords && delivery.street && delivery.number) {
+      let destCoords = (overrides.lat && overrides.lon) ? { lat: overrides.lat, lon: overrides.lon } : null;
+      if (!destCoords && delivery.street && delivery.number)
         destCoords = await geocodeAddress(`${delivery.street} ${delivery.number}, ${city} ${stUF}, ${cep}`);
-      }
-      if (!destCoords) destCoords = await geocodeAddress(`${city}, ${stUF}, ${cep}`);
+      if (!destCoords)
+        destCoords = await geocodeAddress(`${city}, ${stUF}, ${cep}`);
 
       const distKm = (destCoords && originLat)
         ? haversine(originLat, originLon, destCoords.lat, destCoords.lon)
         : (city.toLowerCase() === CONFIG.ORIGIN.CITY.toLowerCase() ? 5 : 15);
 
-      // Passa dynamicConfig para usar frete do banco (modelo KM ou FIXO com faixas).
-      // Se não houver config de frete no banco ainda, cai no fallback hardcoded.
       const result = computeShippingCost(subtotal, distKm, city, dynamicConfig);
       setDelivery(d => ({ ...d, distanceKm: distKm, shippingCost: result.cost, shippingNote: result.note || '' }));
       showToast('Frete calculado!', 'success');

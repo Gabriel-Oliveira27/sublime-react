@@ -1,4 +1,4 @@
-// Caminho: prisma/schema.prisma
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -37,13 +37,13 @@ enum EtapaPedido {
 }
 
 model Estoque {
-  id      Int     @id @default(autoincrement())
-  qtd     Int
-  produto String
-  cores   String
-  litros  String
-  valor   Decimal @db.Decimal(10, 2)
-  linha   Linha
+  id       Int     @id @default(autoincrement())
+  qtd      Int
+  produto  String
+  cores    String
+  litros   String
+  valor    Decimal @db.Decimal(10, 2)
+  linha    Linha
   imagem   String
   filtros  String  @default("")
   detalhes String?
@@ -96,10 +96,55 @@ model Usuario {
   permissoes Json?
   foto       String?
   tema       String   @default("dark")
-  criadoEm   DateTime @default(now())
+  criadoEm  DateTime @default(now())
 }
 
 model Config {
   chave String @id
   valor String
+}
+
+// ── Configuração de Frete (singleton — sempre id = 1) ────────────────────────
+//
+// modelo: "VALOR" | "KM" | "FIXO" | "CIDADE"
+//
+// VALOR  → tiersValor: [{ ate: number|null, taxa: number }]
+//          ate = valor máximo do carrinho para aplicar a taxa; null = sem limite (última faixa)
+//
+// KM     → custoKm, freteGratisAteKm + origem (lat/lon/endereço)
+//
+// FIXO   → valorFixo
+//
+// CIDADE → valorCidadeOrigem, valorDemais, cidadesEspeciais (lista extra) + origem (endereço)
+//          cidadesEspeciais: [{ nome: string, valor: number }]
+//
+model FreteConfig {
+  id    Int    @id @default(autoincrement())
+
+  modelo String @default("VALOR")
+
+  // ── VALOR ──────────────────────────────────────────────────────────────────
+  tiersValor Json?
+
+  // ── KM e CIDADE — origem compartilhada ────────────────────────────────────
+  origemLat      Float?
+  origemLon      Float?
+  origemEndereco String @default("")
+  origemCep      String @default("")
+  origemCidade   String @default("")
+  origemUF       String @default("")
+
+  // ── KM ────────────────────────────────────────────────────────────────────
+  custoKm          Float @default(1.50)
+  freteGratisAteKm Float @default(0)
+
+  // ── FIXO ──────────────────────────────────────────────────────────────────
+  valorFixo Float @default(0)
+
+  // ── CIDADE ────────────────────────────────────────────────────────────────
+  valorCidadeOrigem Float @default(0)
+  valorDemais       Float @default(0)
+  cidadesEspeciais  Json?
+
+  atualizadoEm DateTime @updatedAt
 }
