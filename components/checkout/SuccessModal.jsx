@@ -11,7 +11,7 @@ import styles from './SuccessModal.module.css';
 export default function SuccessModal({ orderId, paymentMethod, deliveryType, pickupDate, pickupTime, onClose }) {
   const router        = useRouter();
   const { showToast } = useToast();
-  const [pixKey, setPixKey] = useState(CONFIG.API.PIX_KEY); // fallback hardcoded enquanto carrega
+  const [pixKey, setPixKey] = useState(''); // carregado da API abaixo
 
   // Busca a chave PIX atualizada do banco ao abrir o modal
   useEffect(() => {
