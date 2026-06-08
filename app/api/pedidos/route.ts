@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { autenticar } from '@/lib/middleware'
 import { CORS_HEADERS, corsOptions } from '@/lib/cors'
+import { checkRateLimit } from '@/app/api/auth/login/ratelimit'
+// Reutiliza o mesmo limitador em memória do login (10 req / 15 min por IP).
+// Para o volume de uma loja pequena é suficiente. Se precisar de limite
+// global entre instâncias Vercel, substitua por Upstash Redis.
 
 export async function GET(req: NextRequest) {
   const auth = await autenticar(req)
@@ -25,6 +29,16 @@ function toMetodoPagamento(method: string): 'PIX' | 'DINHEIRO' | 'CREDITO' {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 10 pedidos por IP por hora
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const rl  = checkRateLimit(ip)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { erro: `Muitos pedidos. Tente novamente em ${rl.retryAfterSec} segundos.` },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } }
+    )
+  }
+
   try {
     const body = await req.json()
     const { customer, items, delivery, payment, coupon, total, enderecoEstruturado } = body
