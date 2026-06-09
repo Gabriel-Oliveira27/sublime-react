@@ -3,9 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { autenticar } from '@/lib/middleware'
 import { CORS_HEADERS, corsOptions } from '@/lib/cors'
 import { checkRateLimit } from '@/app/api/auth/login/ratelimit'
-// Reutiliza o mesmo limitador em memória do login (10 req / 15 min por IP).
-// Para o volume de uma loja pequena é suficiente. Se precisar de limite
-// global entre instâncias Vercel, substitua por Upstash Redis.
+import { validateCPF } from '@/lib/utils'
+import { PedidoBodySchema } from '@/lib/schemas'
+import { logError } from '@/lib/logger'
 
 export async function GET(req: NextRequest) {
   const auth = await autenticar(req)
@@ -40,11 +40,30 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json()
+    const raw    = await req.json()
+
+    // Valida estrutura completa do payload antes de tocar no banco
+    const parsed = PedidoBodySchema.safeParse(raw)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { erro: 'Dados inválidos', detalhes: parsed.error.flatten() },
+        { status: 400 }
+      )
+    }
+    const body = parsed.data
     const { customer, items, delivery, payment, coupon, total, enderecoEstruturado } = body
 
     if (!customer?.name || !items?.length || !delivery?.type || !payment?.method) {
       return NextResponse.json({ erro: 'Dados obrigatórios ausentes' }, { status: 400 })
+    }
+
+    // Valida CPF se fornecido — rejeita sequências inválidas e checksum errado.
+    // validateCPF vive em lib/utils.js e já estava sendo usada no frontend.
+    if (customer.cpf) {
+      const cpfLimpoCheck = String(customer.cpf).replace(/\D/g, '')
+      if (cpfLimpoCheck && !validateCPF(cpfLimpoCheck)) {
+        return NextResponse.json({ erro: 'CPF inválido' }, { status: 400 })
+      }
     }
 
     // Validação rápida de tipos antes de tocar no banco
@@ -147,7 +166,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, orderId: pedido.idRastreio }, { status: 201 })
   } catch (err: any) {
-    console.error('[POST /api/pedidos]', err)
+    logError('POST /api/pedidos', err)
     const isBusinessErr = err.message?.includes('insuficiente') ||
                           err.message?.includes('não encontrado')
     return NextResponse.json(
