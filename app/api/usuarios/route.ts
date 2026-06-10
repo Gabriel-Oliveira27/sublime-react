@@ -6,10 +6,14 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
 const createSchema = z.object({
-  nome:       z.string().min(2),
-  apelido:    z.string().min(1),
-  email:      z.string().email(),
-  senha:      z.string().min(6),
+  nome:    z.string().min(2),
+  apelido: z.string().min(1),
+  email:   z.string().email(),
+  // Mínimo 8 caracteres, pelo menos 1 letra e 1 número.
+  senha: z.string()
+    .min(8,          'Senha deve ter no mínimo 8 caracteres')
+    .regex(/[a-zA-Z]/, 'Senha deve conter pelo menos uma letra')
+    .regex(/[0-9]/,    'Senha deve conter pelo menos um número'),
   foto:       z.string().url().optional().nullable(),
   permissoes: z.object({
     estoque:  z.object({ ver: z.boolean(), editar: z.boolean() }),
