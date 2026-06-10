@@ -12,7 +12,12 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const pedidos = await prisma.pedido.findMany({ orderBy: { dataCompra: 'desc' } })
+    const pedidos = await prisma.pedido.findMany({
+      orderBy: { dataCompra: 'desc' },
+      take: 500, // Limite de segurança — evita retornar o banco inteiro.
+                 // Se a loja crescer ao ponto de 500 pedidos não caberem no
+                 // dashboard, implemente paginação com skip/take + UI de páginas.
+    })
     return NextResponse.json(pedidos, { headers: CORS_HEADERS })
   } catch (err) {
     console.error('[GET /api/pedidos]', err)
