@@ -1,8 +1,9 @@
 import './globals.css';
-import { CartProvider } from '@/context/CartContext';
+import { CartProvider }   from '@/context/CartContext';
 import { ConfigProvider } from '@/context/ConfigContext';
-import { ToastProvider } from '@/context/ToastContext';
-import ToastContainer from '@/components/ui/ToastContainer';
+import { ToastProvider }  from '@/context/ToastContext';
+import ToastContainer     from '@/components/ui/ToastContainer';
+import ErrorBoundary      from '@/components/ErrorBoundary';
 
 export const metadata = {
   title: 'Sublime — Produtos Tupperware',
@@ -28,8 +29,10 @@ export default function RootLayout({ children }) {
         <ToastProvider>
           <ConfigProvider>
           <CartProvider>
+            <ErrorBoundary>
             {children}
             <ToastContainer />
+            </ErrorBoundary>
           </CartProvider>
         </ConfigProvider>
         </ToastProvider>

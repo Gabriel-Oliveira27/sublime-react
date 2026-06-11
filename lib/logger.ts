@@ -13,3 +13,22 @@ export function logError(context: string, error: unknown, publicMsg?: string): v
 export function logWarn(context: string, message: string): void {
   console.warn(`[${context}] ${message}`)
 }
+
+/**
+ * Log de operação bem-sucedida — só emite em desenvolvimento.
+ * Em produção, logs de sucesso aumentam o custo de ingestão em
+ * serviços externos (Datadog, Logtail) sem benefício operacional.
+ * Se precisar de observabilidade em produção, use Sentry ou similar.
+ */
+export function logSuccess(
+  context: string,
+  message: string,
+  details?: Record<string, unknown>
+): void {
+  if (!isDev) return
+  if (details && Object.keys(details).length) {
+    console.log(`[${context}] ✅ ${message}`, details)
+  } else {
+    console.log(`[${context}] ✅ ${message}`)
+  }
+}
