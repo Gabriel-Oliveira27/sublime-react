@@ -9,6 +9,7 @@ import SuccessModal from '@/components/checkout/SuccessModal';
 import {
   PixIcon, BanknoteIcon, CreditCardIcon, MapPinIcon, TruckIcon,
   AlertTriangleIcon, CheckCircleIcon, InfoIcon, PackageIcon, ClipboardListIcon,
+  ShoppingCartIcon,
 } from '@/components/icons/Icons';
 import { useCart } from '@/context/CartContext';
 import { useConfig } from '@/context/ConfigContext';
@@ -413,7 +414,9 @@ export default function CheckoutPage() {
             boxShadow:'0 20px 60px rgba(26,18,24,.25)',
             border:'1px solid var(--border)',textAlign:'center'
           }}>
-            <div style={{fontSize:'2.5rem',marginBottom:'1rem'}}>🛒</div>
+            <div style={{display:'flex',justifyContent:'center',marginBottom:'1rem',color:'var(--accent)'}}>
+              <ShoppingCartIcon size={40} />
+            </div>
             <h3 style={{marginBottom:'.5rem',color:'var(--text-primary)'}}>Sair do checkout?</h3>
             <p style={{color:'var(--text-secondary)',fontSize:'.9rem',marginBottom:'1.5rem',lineHeight:1.5}}>
               Seu carrinho será mantido, mas o progresso desta etapa será perdido.
@@ -549,7 +552,7 @@ export default function CheckoutPage() {
                             onClick={() => setPickerDismissed(true)}
                             style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:'1.1rem', lineHeight:1 }}
                             aria-label="Fechar"
-                          >✕</button>
+                          ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                         </div>
                         <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
                           {savedAddresses.map((addr, i) => (
@@ -852,8 +855,8 @@ export default function CheckoutPage() {
                     </div>
                     <div className="form-group" style={{ marginTop:'1rem' }}>
                       <label>Troco para quanto? <span className={styles.labelNote}>(opcional)</span></label>
-                      <input className="form-input" type="number" min="0" placeholder="Ex: 100"
-                        value={changeFor} onChange={e => setChangeFor(e.target.value.replace(/\D/g,''))}/>
+                      <input className="form-input" type="text" inputMode="decimal" placeholder="Ex: 100,00"
+                        value={changeFor} onChange={e => setChangeFor(e.target.value.replace(/[^\d.,]/g,''))}/>
                     </div>
                   </>
                 )}

@@ -13,6 +13,7 @@ import CartSidebar from '@/components/cart/CartSidebar';
 import SideMenu from '@/components/layout/SideMenu';
 import ProductDescription from '@/components/store/ProductDescription';
 import PhotoLightbox from '@/components/store/PhotoLightbox';
+import { AlertTriangleIcon } from '@/components/icons/Icons';
 import styles from './page.module.css';
 
 /* helpers */
@@ -197,12 +198,14 @@ export default function ProductPage() {
               ) : (
                 <span className={styles.price}>R$ {parseFloat(selectedVar.valor).toFixed(2)}</span>
               )}
-              <span className={styles.stock}>
-                {selectedVar.qtd > 5
-                  ? `${selectedVar.qtd} em estoque`
-                  : selectedVar.qtd > 0
-                    ? `⚠ Últimas ${selectedVar.qtd} unidades`
-                    : 'Esgotado'}
+              <span className={styles.stock} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                {selectedVar.qtd > 5 ? (
+                  `${selectedVar.qtd} em estoque`
+                ) : selectedVar.qtd > 0 ? (
+                  <><AlertTriangleIcon size={14} /> {selectedVar.qtd === 1 ? 'Última unidade' : `Últimas ${selectedVar.qtd} unidades`}</>
+                ) : (
+                  'Esgotado'
+                )}
               </span>
             </div>
 

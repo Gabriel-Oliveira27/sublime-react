@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { autenticar } from '@/lib/middleware'
+import { exigirPermissao } from '@/lib/middleware'
 import { CORS_HEADERS, corsOptions } from '@/lib/cors'
 
 const FRETE_ID = 1
@@ -66,7 +66,7 @@ export async function GET() {
 
 // ── PATCH — requer autenticação (dashboard) ───────────────────────────────────
 export async function PATCH(req: NextRequest) {
-  const auth = await autenticar(req)
+  const auth = await exigirPermissao(req, 'config', 'editar')
   if (auth instanceof NextResponse) return auth
 
   try {

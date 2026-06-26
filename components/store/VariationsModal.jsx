@@ -4,6 +4,7 @@ import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { applyDiscount, parseImages } from '@/lib/utils';
 import { useConfig } from '@/context/ConfigContext';
+import { TagIcon, PackageIcon } from '@/components/icons/Icons';
 import ProductImageCarousel from './ProductImageCarousel';
 import ProductDescription from './ProductDescription';
 import styles from './VariationsModal.module.css';
@@ -28,9 +29,12 @@ export default function VariationsModal({ group, onClose }) {
   if (!group) return null;
 
   const handleAdd = (variation) => {
-    add(variation);
-    showToast('Produto adicionado ao carrinho!', 'success');
-    onClose();
+    if (add(variation)) {
+      showToast('Produto adicionado ao carrinho!', 'success');
+      onClose();
+    } else {
+      showToast('Estoque insuficiente', 'error');
+    }
   };
 
   return (
@@ -51,8 +55,14 @@ export default function VariationsModal({ group, onClose }) {
                   <ProductImageCarousel images={images} alt={v.cores || v.descricao} showThumbs={false} alwaysVisible />
                   {v.cores && <div className={styles.color}><span>{v.cores}</span></div>}
                   <div className={styles.info}>
-                    {v.filtros && <div>🏷️ {v.filtros}</div>}
-                    <div>📦 Estoque: {v.qtd}</div>
+                    {v.filtros && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <TagIcon size={14} /> {v.filtros}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <PackageIcon size={14} /> Estoque: {v.qtd}
+                    </div>
                   </div>
                   {calc.hasDiscount ? (
                     <>

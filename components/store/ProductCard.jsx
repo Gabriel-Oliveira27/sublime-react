@@ -75,12 +75,11 @@ export default function ProductCard({ group, onOpenVariations }) {
       onOpenVariations?.(group);
       return;
     }
-    const result = add(first, discountPct);
-    if (result !== false) {
-      showToast('Produto adicionado ao carrinho!', 'success');
-    } else {
-      showToast('Estoque insuficiente', 'error');
-    }
+    const ok = add(first, discountPct);
+    showToast(
+      ok ? 'Produto adicionado ao carrinho!' : 'Estoque insuficiente',
+      ok ? 'success' : 'error'
+    );
   };
 
   return (
@@ -91,7 +90,7 @@ export default function ProductCard({ group, onOpenVariations }) {
         {(multi || group.totalStock <= 5) && (
           <div className={styles.badges}>
             {multi && <span className={`${styles.badge} ${styles.badgeOpts}`}>{group.variations.length} opções</span>}
-            {group.totalStock <= 5 && <span className={`${styles.badge} ${styles.badgeLast}`}>Últimas unidades</span>}
+            {group.totalStock <= 5 && <span className={`${styles.badge} ${styles.badgeLast}`}>{group.totalStock === 1 ? 'Última unidade' : 'Últimas unidades'}</span>}
           </div>
         )}
         <ProductImageCarousel images={images} alt={group.descricao} showThumbs={false} />

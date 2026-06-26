@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { autenticar } from '@/lib/middleware'
+import { exigirPermissao } from '@/lib/middleware'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -18,7 +18,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await autenticar(req)
+  const auth = await exigirPermissao(req, 'pedidos', 'editar')
   if (auth instanceof NextResponse) return auth
 
   const { id } = await params

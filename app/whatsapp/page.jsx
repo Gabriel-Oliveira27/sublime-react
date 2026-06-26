@@ -19,7 +19,7 @@ export default function WhatsAppPage() {
   }, [isEmpty, router]);
 
   const buildMessage = () => {
-    let msg   = 'Olá! Finalmente me decidi 😄\nQuero reservar os seguintes produtos:\n\n';
+    let msg   = 'Olá! Finalmente me decidi!\nQuero reservar os seguintes produtos:\n\n';
     let total = 0;
     items.forEach(item => {
       total += parseFloat(item.valor) * item.quantity;

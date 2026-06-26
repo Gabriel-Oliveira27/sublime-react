@@ -1,7 +1,7 @@
 // app/api/estoque/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { autenticar } from '@/lib/middleware'
+import { exigirPermissao } from '@/lib/middleware'
 import { CORS_HEADERS, corsOptions } from '@/lib/cors'
 import { z } from 'zod'
 
@@ -17,7 +17,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await autenticar(req)
+  const auth = await exigirPermissao(req, 'estoque', 'editar')
   if (auth instanceof NextResponse) return auth
 
   const { id } = await params
@@ -52,7 +52,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await autenticar(req)
+  const auth = await exigirPermissao(req, 'estoque', 'editar')
   if (auth instanceof NextResponse) return auth
 
   const { id } = await params
