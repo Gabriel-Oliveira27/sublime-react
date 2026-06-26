@@ -1,4 +1,3 @@
-import { CORS_HEADERS, corsOptions } from '@/lib/cors'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { autenticar, exigirPermissao } from '@/lib/middleware'
@@ -42,6 +41,18 @@ function normalizeConfigValue(chave: string, raw: string): string {
   }
   return raw
 }
+import { autenticar } from '@/lib/middleware'
+
+const ALLOWED_KEYS = new Set([
+  'PIX_KEY', 'WHATSAPP',
+  'PAGAMENTO_PIX', 'PAGAMENTO_CREDITO', 'PAGAMENTO_DINHEIRO',
+  'WHATSAPP_ATIVO',
+  'DESCONTO_GLOBAL',
+  'DESCONTO_LINHA_FREEZER', 'DESCONTO_LINHA_AQUECER', 'DESCONTO_LINHA_CONSERVAR',
+  'DESCONTO_LINHA_PREPARAR', 'DESCONTO_LINHA_SERVIR',  'DESCONTO_LINHA_ARMAZENAR',
+  'FRETE_MODELO', 'FRETE_FAIXAS', 'FRETE_CUSTO_KM', 'FRETE_GRATIS_ACIMA_KM',
+  'ORIGEM_ENDERECO', 'ORIGEM_LAT', 'ORIGEM_LON', 'ORIGEM_CEP',
+])
 
 export async function GET(req: NextRequest) {
   const auth = await autenticar(req)
@@ -61,6 +72,14 @@ export async function GET(req: NextRequest) {
       whatsapp: map['WHATSAPP'] ?? '',
       ...extras,
     }, { headers: CORS_HEADERS })
+    const configs = await prisma.config.findMany()
+    const map = Object.fromEntries(configs.map(c => [c.chave, c.valor]))
+    // Retorna tudo + aliases legados para pix/whatsapp
+    return NextResponse.json({
+      pix:      map['PIX_KEY']  ?? '',
+      whatsapp: map['WHATSAPP'] ?? '',
+      ...map,
+    })
   } catch (err) {
     console.error('[GET /api/config/vendas]', err)
     return NextResponse.json({ erro: 'Erro interno' }, { status: 500, headers: CORS_HEADERS })
@@ -90,24 +109,43 @@ export async function PATCH(req: NextRequest) {
     const parsed = schema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ erro: 'Dados inválidos' }, { status: 400, headers: CORS_HEADERS })
+    // Novo formato: { chave, valor } — upsert único
+    if (typeof body.chave === 'string' && body.valor !== undefined) {
+      if (!ALLOWED_KEYS.has(body.chave)) {
+        return NextResponse.json({ erro: 'Chave não permitida' }, { status: 400 })
+      }
+      await prisma.config.upsert({
+        where:  { chave: body.chave },
+        update: { valor: String(body.valor) },
+        create: { chave: body.chave, valor: String(body.valor) },
+      })
+      return NextResponse.json({ sucesso: true })
     }
 
-    const updates = []
-    if (parsed.data.pix !== undefined) {
+    // Formato legado: { pix?, whatsapp? }
+    const updates: Promise<unknown>[] = []
+    if (typeof body.pix === 'string') {
       updates.push(prisma.config.upsert({
         where:  { chave: 'PIX_KEY' },
         update: { valor: parsed.data.pix },
         create: { chave: 'PIX_KEY', valor: parsed.data.pix },
+        update: { valor: body.pix },
+        create: { chave: 'PIX_KEY', valor: body.pix },
       }))
     }
-    if (parsed.data.whatsapp !== undefined) {
+    if (typeof body.whatsapp === 'string') {
       updates.push(prisma.config.upsert({
         where:  { chave: 'WHATSAPP' },
         update: { valor: parsed.data.whatsapp },
         create: { chave: 'WHATSAPP', valor: parsed.data.whatsapp },
+        update: { valor: body.whatsapp },
+        create: { chave: 'WHATSAPP', valor: body.whatsapp },
       }))
     }
 
+    if (!updates.length) {
+      return NextResponse.json({ erro: 'Nenhum dado válido enviado' }, { status: 400 })
+    }
     await Promise.all(updates)
     return NextResponse.json({ sucesso: true }, { headers: CORS_HEADERS })
   } catch (err) {
@@ -118,4 +156,13 @@ export async function PATCH(req: NextRequest) {
 
 export async function OPTIONS() {
   return corsOptions()
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin':  process.env.DASHBOARD_ORIGIN ?? '*',
+      'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+      'Access-Control-Allow-Credentials': 'true',
+    },
+  })
 }
