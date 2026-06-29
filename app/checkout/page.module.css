@@ -201,6 +201,8 @@
   .deliveryOpts { grid-template-columns: 1fr; }
   .payMethods   { grid-template-columns: 1fr; }
   .actions { flex-direction: column; }
+  /* Em coluna, flex:1 (basis 0) colapsava a altura dos botões — manter full-width e altura fixa */
+  .actions .btn { flex: 0 0 auto; width: 100%; }
 }
 @media (max-width: 480px) {
   .stepTitle { font-size: 1.35rem; }
