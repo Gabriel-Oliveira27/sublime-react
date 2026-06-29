@@ -1,9 +1,20 @@
 import './globals.css';
+import { Allura }         from 'next/font/google';
 import { CartProvider }   from '@/context/CartContext';
 import { ConfigProvider } from '@/context/ConfigContext';
 import { ToastProvider }  from '@/context/ToastContext';
 import ToastContainer     from '@/components/ui/ToastContainer';
 import ErrorBoundary      from '@/components/ErrorBoundary';
+
+// Fonte cursiva do branding "Sublime". Auto-hospedada pelo Next (mais
+// confiável que @import do Google Fonts, que pode falhar e cair no `cursive`
+// genérico). Exposta como a CSS var --font-brand para reuso/re-tematização.
+const brandFont = Allura({
+  weight:   '400',
+  subsets:  ['latin'],
+  display:  'swap',
+  variable: '--font-brand',
+});
 
 export const metadata = {
   title: 'Sublime — Produtos Tupperware',
@@ -24,7 +35,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={brandFont.variable}>
       <body>
         <ToastProvider>
           <ConfigProvider>

@@ -71,7 +71,9 @@ export default function StorePage() {
   const [modalGroup,  setModalGroup]    = useState(null);
   const { sidebarOpen, closeSidebar }   = useCart();
   const { showToast }                   = useToast();
-  const headerSearchRef                 = useRef(null);
+  // Guarda os últimos filtros aplicados para que a busca do header e a barra
+  // lateral não descartem os filtros um do outro.
+  const lastFiltersRef                  = useRef({ linha: '', litros: '', search: '', priceMin: '', priceMax: '' });
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -82,7 +84,6 @@ export default function StorePage() {
       const g = groupProducts(stock);
       setGrouped(g);
       setFiltered(g);
-      showToast('Produtos carregados!', 'success');
     } catch (err) {
       setError(err.message);
       showToast('Erro ao carregar produtos.', 'error');
@@ -94,14 +95,15 @@ export default function StorePage() {
   useEffect(() => { load(); }, [load]);
 
   const handleFilters = useCallback((filters) => {
-    setFiltered(applyFiltersToGroups(grouped, filters));
+    lastFiltersRef.current = { ...lastFiltersRef.current, ...filters };
+    setFiltered(applyFiltersToGroups(grouped, lastFiltersRef.current));
   }, [grouped]);
 
-  // Sync header search input with filter
+  // Busca do header: mescla só o termo, preservando linha/capacidade/preço.
   useEffect(() => {
     const el = document.getElementById('header-search');
     if (!el) return;
-    const handler = () => handleFilters({ search: el.value, linha: '', litros: '' });
+    const handler = () => handleFilters({ search: el.value });
     el.addEventListener('input', handler);
     return () => el.removeEventListener('input', handler);
   }, [handleFilters]);

@@ -3,11 +3,10 @@ import { useState, useCallback } from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import PackageSearchIcon from '@/components/icons/PackageSearchIcon';
-import { MapPinIcon, PackageIcon, CheckCircleIcon, SearchIcon } from '@/components/icons/Icons';
+import { SearchIcon } from '@/components/icons/Icons';
 import { useToast } from '@/context/ToastContext';
 import { checkOrder } from '@/lib/api';
 import { applyCPFMask, applyPhoneMask } from '@/lib/utils';
-import { CONFIG } from '@/lib/config';
 import styles from './page.module.css';
 
 /* ── Etapas ──────────────────────────────────────────── */
@@ -142,7 +141,7 @@ export default function ComprasPage() {
         const cpfClean   = val.replace(/\D/g, '');
         const phoneClean = phone.replace(/\D/g, '');
         const res = await fetch(
-          `${CONFIG.API.VERCEL_URL}/api/pedidos/rastrear?cpf=${cpfClean}&phone=${phoneClean}`
+          `/api/pedidos/rastrear?cpf=${cpfClean}&phone=${phoneClean}`
         );
         if (res.status === 401 || res.status === 403) {
           const data = await res.json();
@@ -255,36 +254,32 @@ export default function ComprasPage() {
 }
 
 function OrderCard({ order }) {
+  const productSummary = order.products.map(p => `${p.qty}× ${p.name}`).join(' • ');
   return (
-    <article className={styles.card}>
-      <div className={styles.cardHeader}>
-        <span className={styles.orderNum}>{order.vdNumber || '—'}</span>
-        <span className={`${styles.status} ${STATUS_CLS[order.status] || styles.statusPending}`}>
-          {order.statusText || 'Reservado'}
-        </span>
+    <article className={styles.row}>
+      {/* Informações do pedido */}
+      <div className={styles.rowMain}>
+        <div className={styles.rowHeader}>
+          <span className={styles.orderNum}>{order.vdNumber || '—'}</span>
+          <span className={`${styles.status} ${STATUS_CLS[order.status] || styles.statusPending}`}>
+            {order.statusText || 'Reservado'}
+          </span>
+        </div>
+        <div className={styles.rowInfo}>
+          <span className={styles.rowProducts} title={productSummary}>{productSummary}</span>
+          <span className={styles.rowTotal}>R$ {order.total.toFixed(2)}</span>
+        </div>
       </div>
 
-      <div className={styles.products}>
-        <h4><PackageIcon size={16}/> Produtos</h4>
-        {order.products.map((p, i) => (
-          <div key={i} className={styles.productItem}>
-            <span className={styles.productName}>{p.name}</span>
-            <span className={styles.productQty}>×{p.qty}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className={styles.orderTotal}>
-        <span>Total</span>
-        <span>R$ {order.total.toFixed(2)}</span>
-      </div>
-
-      <div className={styles.timeline}>
-        <h4><MapPinIcon size={16}/> Status da entrega</h4>
+      {/* Etapas — stepper horizontal */}
+      <div className={styles.rowTimeline}>
         {order.timeline.map((step, i) => (
-          <div key={i} className={`${styles.timelineStep} ${step.active ? styles.timelineActive : ''} ${step.cancelled ? styles.timelineCancelled : ''}`}>
-            <div className={styles.dot}/>
-            <span className={styles.timelineTitle}>{step.step}</span>
+          <div
+            key={i}
+            className={`${styles.htStep} ${step.active ? styles.htActive : ''} ${step.cancelled ? styles.htCancelled : ''}`}
+          >
+            <div className={styles.htDot} />
+            <span className={styles.htLabel}>{step.step}</span>
           </div>
         ))}
       </div>

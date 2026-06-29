@@ -6,6 +6,7 @@ import { checkRateLimit } from '@/app/api/auth/login/ratelimit'
 import { validateCPF } from '@/lib/utils'
 import { PedidoBodySchema } from '@/lib/schemas'
 import { logError } from '@/lib/logger'
+import { CONFIG } from '@/lib/config'
 
 export async function GET(req: NextRequest) {
   const auth = await autenticar(req)
@@ -34,9 +35,9 @@ function toMetodoPagamento(method: string): 'PIX' | 'DINHEIRO' | 'CREDITO' {
 }
 
 export async function POST(req: NextRequest) {
-  // Rate limit: 10 pedidos por IP por hora
+  // Rate limit: 10 pedidos por IP a cada 15 min (balde separado do login)
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-  const rl  = checkRateLimit(ip)
+  const rl  = checkRateLimit(ip, 'pedidos')
   if (!rl.allowed) {
     return NextResponse.json(
       { erro: `Muitos pedidos. Tente novamente em ${rl.retryAfterSec} segundos.` },
@@ -56,7 +57,9 @@ export async function POST(req: NextRequest) {
       )
     }
     const body = parsed.data
-    const { customer, items, delivery, payment, coupon, total, enderecoEstruturado } = body
+    // `total`/`subtotal` enviados pelo cliente são intencionalmente ignorados:
+    // o servidor recalcula tudo a partir do banco (ver transação abaixo).
+    const { customer, items, delivery, payment, coupon, enderecoEstruturado } = body
 
     if (!customer?.name || !items?.length || !delivery?.type || !payment?.method) {
       return NextResponse.json({ erro: 'Dados obrigatórios ausentes' }, { status: 400 })
@@ -81,23 +84,21 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ erro: `Quantidade inválida para o item ${prodId}` }, { status: 400 })
     }
 
-    const cpfLimpo    = customer.cpf?.replace(/\D/g, '') || null
-    const changeFor   = payment.changeFor ? parseFloat(String(payment.changeFor)) : null
-    const valorALevar = changeFor && changeFor > 0 ? +(changeFor - total).toFixed(2) : null
+    const cpfLimpo        = customer.cpf?.replace(/\D/g, '') || null
+    const changeFor       = payment.changeFor ? parseFloat(String(payment.changeFor)) : null
+    const metodoPagamento = toMetodoPagamento(payment.method)
 
     // ─────────────────────────────────────────────────────────────────────
-    // CORREÇÃO CRÍTICA: tudo dentro de uma única transação.
-    //
-    // Antes: o loop de decremento ficava FORA do $transaction. Se a criação
-    // do pedido falhasse depois (ex: erro de constraint, timeout), o estoque
-    // já teria sido decrementado sem nenhum pedido gerado — stock leak.
-    //
-    // Agora: o findUnique + update de cada item e o create do pedido são
-    // atomicamente uma coisa só. Qualquer falha reverte tudo.
+    // Tudo dentro de uma única transação atômica: validação de estoque,
+    // decremento, recálculo de preços A PARTIR DO BANCO (nunca confiando nos
+    // valores enviados pelo cliente) e criação do pedido. Qualquer falha
+    // reverte tudo — sem stock leak nem preço manipulado.
     // ─────────────────────────────────────────────────────────────────────
     const pedido = await prisma.$transaction(async (tx) => {
 
-      // 1. Valida e decrementa cada item do estoque
+      // 1. Valida estoque, decrementa e soma o subtotal usando o preço do
+      //    banco. O `item.valor` do cliente é ignorado (anti price-tampering).
+      let subtotalServidor = 0
       for (const item of items) {
         const prodId = Number(item.id)
         const qty    = Number(item.qty ?? 1)
@@ -108,41 +109,70 @@ export async function POST(req: NextRequest) {
         if (prod.qtd < qty)
           throw new Error(`Estoque insuficiente para "${prod.produto}". Disponível: ${prod.qtd}.`)
 
+        subtotalServidor += Number(prod.valor) * qty
         await tx.estoque.update({
           where: { id: prodId },
           data:  { qtd: { decrement: qty } },
         })
       }
+      subtotalServidor = +subtotalServidor.toFixed(2)
 
-      // 2. Gera idRastreio sem gaps dentro da mesma tx
-      const todos = await tx.pedido.findMany({
-        where:  { idRastreio: { startsWith: 'VD-' } },
-        select: { idRastreio: true },
-      })
-      const lastNum = todos.reduce((max, p) => {
-        const n = parseInt(p.idRastreio.replace('VD-', ''), 10) || 0
-        return n > max ? n : max
-      }, 0)
-      const idRastreio = `VD-${String(lastNum + 1).padStart(3, '0')}`
+      // 2. Frete: aceito do cliente, porém saneado (≥ 0). O cálculo completo
+      //    depende de config/geocode e é conferido manualmente na venda.
+      let freteServidor = Math.max(0, Number(delivery.frete ?? 0)) || 0
 
-      // 3. Cria o pedido
-      return tx.pedido.create({
+      // 3. Desconto do cupom — recalculado no servidor a partir do banco.
+      let descontoServidor = 0
+      const cupomCode = coupon ? String(coupon).toUpperCase().trim() : null
+      if (cupomCode) {
+        const c = await tx.cupom.findUnique({ where: { cupom: cupomCode } })
+        if (c && c.quantidadeUsos > 0) {
+          const d = c.desconto.toLowerCase()
+          if (d.includes('frete')) {
+            freteServidor = 0
+          } else {
+            const pct = parseFloat(d.replace('%', '').replace(',', '.'))
+            if (!isNaN(pct) && pct > 0)
+              descontoServidor = +(subtotalServidor * (pct / 100)).toFixed(2)
+          }
+        }
+      }
+
+      // 4. Total = subtotal − desconto + frete, com juros de parcelamento no crédito.
+      let totalServidor = +(subtotalServidor - descontoServidor + freteServidor).toFixed(2)
+      const parcelas = Number(payment.installments ?? 1)
+      if (metodoPagamento === 'CREDITO' && parcelas > 1) {
+        const fee = (CONFIG.INSTALLMENT_FEES as Record<number, number>)[parcelas] ?? 0
+        totalServidor = +(totalServidor * (1 + fee)).toFixed(2)
+      }
+
+      const valorALevar = changeFor && changeFor > totalServidor
+        ? +(changeFor - totalServidor).toFixed(2)
+        : null
+
+      // 5. Cria o pedido e deriva o idRastreio do id autoincrement (atômico,
+      //    sem o scan O(n) nem a corrida da versão anterior).
+      const criado = await tx.pedido.create({
         data: {
-          idRastreio,
+          idRastreio:      `PENDENTE-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           nome:            customer.name,
           contato:         customer.phone || '',
           pedido:          items,
           endereco:        delivery.address ?? delivery.type,
-          totalVenda:      total,
-          subtotal:        items.reduce((s: number, i: any) =>
-                             s + parseFloat(i.valor ?? '0') * (i.qty ?? 1), 0),
-          metodoPagamento: toMetodoPagamento(payment.method),
-          cupom:           coupon || null,
-          frete:           delivery.frete ?? 0,
-          parcelas:        Number(payment.installments ?? 1),
+          totalVenda:      totalServidor,
+          subtotal:        subtotalServidor,
+          metodoPagamento,
+          cupom:           cupomCode,
+          frete:           freteServidor,
+          parcelas,
           trocoPara:       changeFor ?? null,
-          valorALevar:     valorALevar ?? null,
+          valorALevar,
         },
+      })
+
+      return tx.pedido.update({
+        where: { id: criado.id },
+        data:  { idRastreio: `VD-${String(criado.id).padStart(3, '0')}` },
       })
     }, { timeout: 15_000 })
 

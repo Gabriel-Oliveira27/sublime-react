@@ -25,6 +25,39 @@ export async function autenticar(
   return { usuario: payload }
 }
 
+export type ModuloPermissao = 'estoque' | 'pedidos' | 'cupons' | 'config' | 'usuarios'
+
+/** Verifica se o usuário tem o nível de permissão pedido em um módulo. Admin sempre pode. */
+export function temPermissao(
+  usuario: JwtPayload,
+  modulo: ModuloPermissao,
+  nivel: 'ver' | 'editar'
+): boolean {
+  if (usuario.isAdmin) return true
+  const p = usuario.permissoes?.[modulo]
+  return !!p && p[nivel] === true
+}
+
+/**
+ * Autentica E exige uma permissão específica. Sem isto, qualquer sessão válida
+ * (mesmo um funcionário "somente leitura") conseguia editar via chamada direta
+ * à API — as permissões só eram aplicadas na UI do dashboard.
+ *
+ * Retorna o usuário autenticado ou uma resposta 401/403 pronta.
+ */
+export async function exigirPermissao(
+  req: NextRequest,
+  modulo: ModuloPermissao,
+  nivel: 'ver' | 'editar'
+): Promise<{ usuario: JwtPayload } | NextResponse> {
+  const auth = await autenticar(req)
+  if (auth instanceof NextResponse) return auth
+  if (!temPermissao(auth.usuario, modulo, nivel)) {
+    return NextResponse.json({ erro: 'Sem permissão para esta ação' }, { status: 403 })
+  }
+  return auth
+}
+
 /** Configurações do cookie de autenticação */
 export const COOKIE_OPTIONS =
   'HttpOnly; Secure; SameSite=None; Path=/; Max-Age=604800' // 7 dias

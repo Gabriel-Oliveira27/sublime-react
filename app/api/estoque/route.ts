@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { autenticar } from '@/lib/middleware'
+import { exigirPermissao } from '@/lib/middleware'
 import { z } from 'zod'
 
 const createSchema = z.object({
@@ -26,7 +26,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await autenticar(req)
+  const auth = await exigirPermissao(req, 'estoque', 'editar')
   if (auth instanceof NextResponse) return auth
 
   try {

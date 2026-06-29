@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { applyDiscount, parseImages } from '@/lib/utils';
+import { AlertTriangleIcon } from '@/components/icons/Icons';
 import ProductImageCarousel from './ProductImageCarousel';
 import ProductDescription from './ProductDescription';
 import styles from './ProductDetailModal.module.css';
@@ -78,10 +79,14 @@ export default function ProductDetailModal({ group, onClose }) {
               ) : (
                 <span className={styles.price}>R$ {parseFloat(v.valor).toFixed(2)}</span>
               )}
-              <span className={styles.stock}>
-                {v.qtd > 5 ? `${v.qtd} em estoque`
-                  : v.qtd > 0 ? `⚠ Últimas ${v.qtd} unidades`
-                  : 'Esgotado'}
+              <span className={styles.stock} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                {v.qtd > 5 ? (
+                  `${v.qtd} em estoque`
+                ) : v.qtd > 0 ? (
+                  <><AlertTriangleIcon size={14} /> {v.qtd === 1 ? 'Última unidade' : `Últimas ${v.qtd} unidades`}</>
+                ) : (
+                  'Esgotado'
+                )}
               </span>
             </div>
 

@@ -1,14 +1,25 @@
 import { z } from 'zod'
 
 export const ItemPedidoSchema = z.object({
-  id:        z.number().int().positive(),
+  // O carrinho guarda o id como string ("5"); coerce aceita string ou número.
+  id:        z.coerce.number().int().positive(),
   descricao: z.string().min(1),
   cores:     z.string().nullable().optional(),
   imagem:    z.string().optional(),
-  qty:       z.number().int().positive().max(999),
-  valor:     z.union([z.number(), z.string()]),
-  qtd:       z.number().int().nonnegative().optional(),
+  qty:       z.coerce.number().int().positive().max(999),
+  // O preço NÃO é confiável vindo do cliente — o servidor recalcula a partir
+  // do banco (ver app/api/pedidos/route.ts). Aceito como opcional só para
+  // compatibilidade; é ignorado no cálculo do total.
+  valor:     z.union([z.number(), z.string()]).optional(),
+  qtd:       z.coerce.number().int().nonnegative().optional(),
 })
+
+// O checkout usa rótulos com case misto ("Dinheiro", "Credito").
+// Normaliza para o enum canônico em maiúsculas antes de validar.
+const MetodoPagamentoSchema = z.preprocess(
+  (v) => (typeof v === 'string' ? v.toUpperCase() : v),
+  z.enum(['PIX', 'DINHEIRO', 'CREDITO'])
+)
 
 export const PedidoBodySchema = z.object({
   customer: z.object({
@@ -33,9 +44,9 @@ export const PedidoBodySchema = z.object({
   }),
 
   payment: z.object({
-    method:       z.enum(['PIX', 'DINHEIRO', 'CREDITO']),
-    installments: z.number().int().min(1).max(12).optional(),
-    changeFor:    z.number().nonnegative().optional(),
+    method:       MetodoPagamentoSchema,
+    installments: z.coerce.number().int().min(1).max(12).optional(),
+    changeFor:    z.coerce.number().nonnegative().optional(),
   }),
 
   coupon:              z.string().nullable().optional(),

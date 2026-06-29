@@ -32,17 +32,15 @@ export async function POST(req: NextRequest) {
       console.warn('[POST /api/cupons/consumir] chamado sem orderId — atualizar front-end.')
     }
 
-    const cupom = await prisma.cupom.findUnique({ where: { cupom: normalized } })
-    if (!cupom || cupom.quantidadeUsos <= 0) {
-      return NextResponse.json({ success: false })
-    }
-
-    await prisma.cupom.update({
-      where: { cupom: normalized },
+    // Decremento atômico e condicional: só consome se ainda houver usos.
+    // Evita a corrida em que duas requisições concorrentes leem o mesmo
+    // valor e zeram/negativam o contador.
+    const consumido = await prisma.cupom.updateMany({
+      where: { cupom: normalized, quantidadeUsos: { gt: 0 } },
       data:  { quantidadeUsos: { decrement: 1 } },
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: consumido.count > 0 })
   } catch (err) {
     console.error('[POST /api/cupons/consumir]', err)
     return NextResponse.json({ erro: 'Erro interno' }, { status: 500 })

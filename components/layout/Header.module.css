@@ -18,8 +18,8 @@
   gap: var(--sp-4);
 }
 .logo {
-  font-family: 'Allura', cursive;
-  font-size: 2.6rem;
+  font-family: var(--font-brand), 'Allura', cursive;
+  font-size: 2.8rem;
   color: var(--accent);
   flex-shrink: 0;
   line-height: 1;

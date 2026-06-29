@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { autenticar } from '@/lib/middleware'
+import { autenticar, exigirPermissao } from '@/lib/middleware'
 
 export async function GET(req: NextRequest) {
   const auth = await autenticar(req)
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await autenticar(req)
+  const auth = await exigirPermissao(req, 'cupons', 'editar')
   if (auth instanceof NextResponse) return auth
 
   try {

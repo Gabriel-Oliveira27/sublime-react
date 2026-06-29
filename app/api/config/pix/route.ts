@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { autenticar } from '@/lib/middleware'
+import { autenticar, exigirPermissao } from '@/lib/middleware'
 import { z } from 'zod'
 
 const patchSchema = z.object({
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = await autenticar(req)
+  const auth = await exigirPermissao(req, 'config', 'editar')
   if (auth instanceof NextResponse) return auth
 
   try {

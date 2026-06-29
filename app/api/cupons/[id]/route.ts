@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { autenticar } from '@/lib/middleware'
+import { exigirPermissao } from '@/lib/middleware'
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await autenticar(req)
+  const auth = await exigirPermissao(req, 'cupons', 'editar')
   if (auth instanceof NextResponse) return auth
 
   const { id } = await params

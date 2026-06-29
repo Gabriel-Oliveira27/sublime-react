@@ -27,8 +27,8 @@ export function logSuccess(
 ): void {
   if (!isDev) return
   if (details && Object.keys(details).length) {
-    console.log(`[${context}] ✅ ${message}`, details)
+    console.log(`[${context}] ${message}`, details)
   } else {
-    console.log(`[${context}] ✅ ${message}`)
+    console.log(`[${context}] ${message}`)
   }
 }

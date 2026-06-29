@@ -23,13 +23,19 @@ setInterval(() => {
   store.forEach((v, k) => { if (v.resetAt < now) store.delete(k); });
 }, 60_000);
 
-export function checkRateLimit(ip: string): { allowed: boolean; retryAfterSec: number } {
+export function checkRateLimit(
+  ip: string,
+  ns = 'login'
+): { allowed: boolean; retryAfterSec: number } {
+  // Namespace separa baldes (ex: login vs pedidos) para que um não consuma
+  // a cota do outro.
+  const key  = `${ns}:${ip}`;
   const now  = Date.now();
-  let entry  = store.get(ip);
+  let entry  = store.get(key);
 
   if (!entry || entry.resetAt < now) {
     entry = { count: 1, resetAt: now + WINDOW_MS };
-    store.set(ip, entry);
+    store.set(key, entry);
     return { allowed: true, retryAfterSec: 0 };
   }
 

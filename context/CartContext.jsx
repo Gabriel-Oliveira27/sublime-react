@@ -85,7 +85,16 @@ export function CartProvider({ children }) {
   const totalPrice  = state.items.reduce((s, i) => s + parseFloat(i.valor) * i.quantity, 0);
   const isEmpty     = state.items.length === 0;
 
-  const add = useCallback((product, discountPct = 0) => dispatch({ type: 'ADD', product, discountPct }), []);
+  const add = useCallback((product, discountPct = 0) => {
+    // Verifica estoque antes de despachar para que o chamador saiba se
+    // conseguiu adicionar (o dispatch não retorna estado).
+    const id         = String(product.id);
+    const existing   = state.items.find(i => i.id === id);
+    const currentQty = existing ? existing.quantity : 0;
+    if (currentQty >= Number(product.qtd)) return false; // estoque esgotado
+    dispatch({ type: 'ADD', product, discountPct });
+    return true;
+  }, [state.items]);
   const remove = useCallback((id) => dispatch({ type: 'REMOVE', id }), []);
   const updateQty = useCallback((id, delta) => dispatch({ type: 'UPDATE_QTY', id, delta }), []);
   const clear = useCallback(() => {
