@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { applyDiscount, parseImages } from '@/lib/utils';
@@ -26,6 +26,21 @@ export default function VariationsModal({ group, onClose }) {
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
   }, [onClose]);
 
+  // Pré-carrega as imagens das variações e só mostra a grade quando prontas
+  // (evita o "card vazio" enquanto o Cloudinary baixa as fotos). Teto de 4s.
+  const [imagesReady, setImagesReady] = useState(false);
+  useEffect(() => {
+    if (!group) return;
+    setImagesReady(false);
+    const urls = group.variations.flatMap((v) => parseImages(v.imagem)).filter(Boolean);
+    if (urls.length === 0) { setImagesReady(true); return; }
+    let cancelled = false, done = 0;
+    const finish = () => { if (!cancelled && ++done >= urls.length) setImagesReady(true); };
+    urls.forEach((u) => { const img = new Image(); img.onload = finish; img.onerror = finish; img.src = u; });
+    const t = setTimeout(() => { if (!cancelled) setImagesReady(true); }, 4000);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [group]);
+
   if (!group) return null;
 
   const handleAdd = (variation) => {
@@ -45,6 +60,12 @@ export default function VariationsModal({ group, onClose }) {
           <button className={styles.closeBtn} onClick={onClose} aria-label="Fechar">×</button>
         </div>
         <div className={styles.body}>
+          {!imagesReady ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '220px' }}>
+              <span className="spinner" />
+            </div>
+          ) : (
+          <>
           <ProductDescription detalhes={group.variations[0]?.detalhes} />
           <div className={styles.grid}>
             {group.variations.map((v, i) => {
@@ -80,6 +101,8 @@ export default function VariationsModal({ group, onClose }) {
               );
             })}
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>
