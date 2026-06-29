@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendPushToAll } from '@/lib/push'
 import { autenticar } from '@/lib/middleware'
 import { CORS_HEADERS, corsOptions } from '@/lib/cors'
 import { checkRateLimit } from '@/app/api/auth/login/ratelimit'
@@ -198,6 +199,16 @@ export async function POST(req: NextRequest) {
         console.warn('[POST /api/pedidos] upsert cliente:', e)
       }
     }
+
+    // Notifica os apps dos vendedores (push). Roda DEPOIS da resposta via
+    // `after()` — não adiciona latência nem derruba a venda se a Expo falhar.
+    after(() =>
+      sendPushToAll({
+        title: 'Novo Pedido',
+        body:  'Verifique o App para mais informações',
+        data:  { type: 'novo-pedido', orderId: pedido.idRastreio },
+      })
+    )
 
     return NextResponse.json({ success: true, orderId: pedido.idRastreio }, { status: 201 })
   } catch (err: any) {
