@@ -18,6 +18,7 @@
     "dotenv": "^17.4.2",
     "jose": "^6.2.3",
     "next": "^15.5.18",
+    "qrcode": "^1.5.4",
     "react": "^19",
     "react-dom": "^19",
     "ws": "^8.20.1",
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.19.41",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.1",

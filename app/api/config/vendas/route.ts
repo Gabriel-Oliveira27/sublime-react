@@ -24,6 +24,15 @@ const EXTRA_DEFAULTS: Record<string, string> = {
   DESCONTO_LINHA_PREPARAR:  '0',
   DESCONTO_LINHA_SERVIR:    '0',
   DESCONTO_LINHA_ARMAZENAR: '0',
+  // ── PIX online (Mercado Pago) ──────────────────────────────────────────────
+  // Ativa o "pagar agora" (QR gerado na hora, confirmação automática).
+  PIX_ONLINE_ATIVO:         'false',
+  // Modelo da taxa de serviço: NULA | FIXA | FAIXAS
+  PIX_TAXA_MODO:            'NULA',
+  // FIXA: { tipo: 'PERCENT'|'REAIS', valor: number }
+  PIX_TAXA_FIXA:           '{"tipo":"PERCENT","valor":0}',
+  // FAIXAS: [{ min, tipo, valor }] — taxa por valor mínimo de compra
+  PIX_TAXA_FAIXAS:         '[]',
 }
 
 // Chaves que o PATCH { chave, valor } pode gravar (allow-list — nunca gravar
@@ -38,11 +47,18 @@ const ALL_KEYS = ['PIX_KEY', 'WHATSAPP', ...Object.keys(EXTRA_DEFAULTS)]
 
 /** Normaliza o valor conforme a chave (toggles → true/false, descontos → 0-100). */
 function normalizeConfigValue(chave: string, raw: string): string {
-  if (chave === 'WHATSAPP_ATIVO' || chave.startsWith('PAGAMENTO_')) {
-    return raw === 'false' ? 'false' : 'true'
+  if (chave === 'WHATSAPP_ATIVO' || chave.startsWith('PAGAMENTO_') || chave === 'PIX_ONLINE_ATIVO') {
+    return raw === 'true' ? 'true' : 'false'
   }
   if (chave === 'DESCONTO_GLOBAL' || chave.startsWith('DESCONTO_LINHA_')) {
     return String(Math.max(0, Math.min(100, parseInt(raw) || 0)))
+  }
+  if (chave === 'PIX_TAXA_MODO') {
+    return ['NULA', 'FIXA', 'FAIXAS'].includes(raw) ? raw : 'NULA'
+  }
+  if (chave === 'PIX_TAXA_FIXA' || chave === 'PIX_TAXA_FAIXAS') {
+    // Só grava se for JSON válido — nunca aceita string arbitrária do cliente.
+    try { JSON.parse(raw); return raw } catch { return chave === 'PIX_TAXA_FAIXAS' ? '[]' : '{"tipo":"PERCENT","valor":0}' }
   }
   return raw
 }

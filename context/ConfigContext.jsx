@@ -1,5 +1,6 @@
 'use client';
 import { createContext, useContext, useEffect, useState } from 'react';
+import { pixConfigDoPublic, PIX_TAXA_CONFIG_VAZIO } from '@/lib/pixFee';
 
 const DEFAULT_FRETE = {
   modelo: 'VALOR',
@@ -20,6 +21,7 @@ const DEFAULTS = {
   pagamentoPix:      true,
   pagamentoCredito:  true,
   pagamentoDinheiro: true,
+  pixOnline:         PIX_TAXA_CONFIG_VAZIO,
   frete: DEFAULT_FRETE,
   loaded: false,
 };
@@ -47,6 +49,7 @@ export function ConfigProvider({ children }) {
           pagamentoPix:      data.pagamento_pix      !== 'false',
           pagamentoCredito:  data.pagamento_credito  !== 'false',
           pagamentoDinheiro: data.pagamento_dinheiro !== 'false',
+          pixOnline:         pixConfigDoPublic(data),
           // Frete vem como objeto completo — mantém defaults para campos ausentes
           frete: data.frete ? { ...DEFAULT_FRETE, ...data.frete } : DEFAULT_FRETE,
           loaded: true,

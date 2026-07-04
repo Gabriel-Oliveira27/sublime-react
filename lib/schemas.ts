@@ -47,6 +47,9 @@ export const PedidoBodySchema = z.object({
     method:       MetodoPagamentoSchema,
     installments: z.coerce.number().int().min(1).max(12).optional(),
     changeFor:    z.coerce.number().nonnegative().optional(),
+    // PIX "pagar agora" (online). Só tem efeito se method === PIX E o servidor
+    // confirmar que PIX_ONLINE_ATIVO está ligado — nunca confiar só nesta flag.
+    online:       z.boolean().optional(),
   }),
 
   coupon:              z.string().nullable().optional(),

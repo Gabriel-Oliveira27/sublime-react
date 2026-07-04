@@ -73,6 +73,14 @@ model Pedido {
   parcelas        Int             @default(1)
   trocoPara       Decimal?        @db.Decimal(10, 2)
   valorALevar     Decimal?        @db.Decimal(10, 2)
+
+  // ── PIX online (Mercado Pago) ────────────────────────────────────────────
+  // pixOnline: true = cliente escolheu "pagar agora"; taxaServico = taxa de
+  // conveniência (calculada NO SERVIDOR); pspPaymentId = id da cobrança no PSP,
+  // usado pelo webhook para achar o pedido e confirmar o pagamento.
+  pixOnline       Boolean         @default(false)
+  taxaServico     Decimal         @db.Decimal(10, 2) @default(0)
+  pspPaymentId    String?         @unique
 }
 
 model Cliente {

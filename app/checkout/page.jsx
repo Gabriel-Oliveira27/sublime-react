@@ -21,6 +21,7 @@ import {
   parseCurrency, formatDateBR, computeShippingCost, haversine,
 } from '@/lib/utils';
 import { lookupCEP, geocodeAddress, reserveOrder, consumeCoupon } from '@/lib/api';
+import { calcularTaxaPix } from '@/lib/pixFee';
 import styles from './page.module.css';
 
 const INITIAL_DELIVERY = {
@@ -50,7 +51,7 @@ export default function CheckoutPage() {
   const [customer,  setCustomer]  = useState({ name: '', phone: '', cpf: '' });
   const [delivery,  setDelivery]  = useState(INITIAL_DELIVERY);
   const [pixKey,    setPixKey]    = useState('');
-  const [payment,   setPayment]   = useState({ method: '', installments: 1 });
+  const [payment,   setPayment]   = useState({ method: '', installments: 1, online: true });
   const [paymentConfig, setPaymentConfig] = useState({ pix: true, credito: true, dinheiro: true });
 
   // Busca métodos de pagamento habilitados e chave PIX da API pública
@@ -70,7 +71,12 @@ export default function CheckoutPage() {
 
   // Busca a chave PIX do banco quando o método PIX é selecionado (fallback se ainda não carregou)
   const handleSelectPayment = (method) => {
-    setPayment(p => ({ ...p, method }));
+    setPayment(p => ({
+      ...p,
+      method,
+      // PIX + online ligado → mantém a escolha (padrão: instantâneo). Fora disso, sem taxa.
+      online: method === 'PIX' && !!dynamicConfig?.pixOnline?.ativo ? p.online : false,
+    }));
     if (method === 'PIX' && !pixKey) {
       fetch('/api/config/public')
         .then(r => r.json())
@@ -145,6 +151,13 @@ export default function CheckoutPage() {
 
   const total          = +(subtotal - discount + (typeof shipping === 'number' ? shipping : 0)).toFixed(2);
   const installmentFee = payment.method === 'Credito' ? (CONFIG.INSTALLMENT_FEES[payment.installments] || 0) : 0;
+
+  /* ── PIX instantâneo (online) + taxa de serviço ── */
+  const pixCfg              = dynamicConfig?.pixOnline;
+  const pixOnlineDisponivel = !!pixCfg?.ativo;
+  const isPixInstant        = payment.method === 'PIX' && payment.online === true && pixOnlineDisponivel;
+  // Apenas informativo — o servidor recalcula e é a fonte de verdade.
+  const serviceFee          = isPixInstant ? calcularTaxaPix(total, pixCfg) : 0;
 
   const goTo = (n) => { setStep(n); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
@@ -336,7 +349,9 @@ export default function CheckoutPage() {
 
       const instFee  = (payment.method === 'Credito' && payment.installments > 1)
         ? CONFIG.INSTALLMENT_FEES[payment.installments] || 0 : 0;
-      const finalTotal = +(total * (1 + instFee)).toFixed(2);
+      // total enviado é só informativo — o servidor recalcula subtotal, frete,
+      // desconto E a taxa de serviço do PIX a partir do banco (anti-tampering).
+      const finalTotal = +((total * (1 + instFee)) + serviceFee).toFixed(2);
 
       const enderecoEstruturado = delivery.type === 'entrega' ? {
         street:       delivery.street,
@@ -358,6 +373,7 @@ export default function CheckoutPage() {
           method:       payment.method,
           installments: Number(payment.installments),
           changeFor:    payment.method === 'Dinheiro' ? parseCurrency(changeFor) : '',
+          online:       isPixInstant,
         },
         coupon:   coupon.code || '',
         subtotal: +subtotal.toFixed(2),
@@ -371,7 +387,7 @@ export default function CheckoutPage() {
         /* CRITICAL: set guard BEFORE clear() so isEmpty effect doesn't redirect */
         orderPlacedRef.current = true;
         clear();
-        setSuccessData({ orderId: result.orderId || result.orderCode || 'N/A' });
+        setSuccessData({ orderId: result.orderId || result.orderCode || 'N/A', pix: result.pix || null });
       } else {
         throw new Error(result.error || result.message || 'Erro ao processar pedido');
       }
@@ -833,16 +849,38 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
+                {payment.method === 'PIX' && pixOnlineDisponivel && (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'.6rem', marginTop:'1rem' }}>
+                    {[
+                      { on:true,  title:'Pagar agora (instantâneo)',
+                        sub: serviceFee > 0
+                          ? `Confirma na hora • taxa de serviço R$ ${serviceFee.toFixed(2)} — seu pedido sai mais rápido`
+                          : 'Confirma na hora — seu pedido sai mais rápido' },
+                      { on:false, title:'Pagar na retirada/entrega',
+                        sub:'PIX na hora do recebimento — sem taxa' },
+                    ].map(opt => (
+                      <button key={String(opt.on)} type="button"
+                        onClick={() => setPayment(p => ({ ...p, online: opt.on }))}
+                        style={{
+                          textAlign:'left', padding:'.85rem 1rem', borderRadius:'var(--r-md)', cursor:'pointer',
+                          border: payment.online === opt.on ? '2px solid var(--accent)' : '1.5px solid var(--border)',
+                          background: payment.online === opt.on ? 'var(--surface-muted)' : 'var(--surface)',
+                          fontFamily:"'DM Sans', sans-serif",
+                        }}>
+                        <div style={{ fontWeight:700, fontSize:'.92rem', color:'var(--text-primary)' }}>{opt.title}</div>
+                        <div style={{ fontSize:'.8rem', color:'var(--text-secondary)', marginTop:2 }}>{opt.sub}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {payment.method === 'PIX' && (
-                  <div className={styles.infoBox}>
+                  <div className={styles.infoBox} style={{ marginTop:'1rem' }}>
                     <InfoIcon size={18}/>
                     <span>
-                      Após confirmar, você deverá realizar o pagamento via PIX.
-                      {pixKey && (
-                        <>
-                          {' '}Chave PIX: <strong style={{ userSelect: 'all' }}>{pixKey}</strong>
-                        </>
-                      )}
+                      {isPixInstant
+                        ? 'Após confirmar, você verá o QR Code e o Copia e Cola para pagar na hora. A confirmação é automática.'
+                        : <>Você pagará via PIX na retirada/entrega.{pixKey && <> Chave PIX: <strong style={{ userSelect:'all' }}>{pixKey}</strong></>}</>}
                     </span>
                   </div>
                 )}
@@ -902,6 +940,8 @@ export default function CheckoutPage() {
             paymentMethod={payment.method}
             installments={payment.installments}
             installmentFee={installmentFee}
+            serviceFee={serviceFee}
+            serviceFeeActive={isPixInstant}
             onCouponApplied={(c) => {
               setCoupon(c);
               if (c.type === 'fretegratis') setDelivery(d => ({ ...d, shippingCost: 0 }));
@@ -927,6 +967,7 @@ export default function CheckoutPage() {
           deliveryType={delivery.type}
           pickupDate={delivery.pickupDate}
           pickupTime={delivery.pickupTime}
+          pix={successData.pix}
           onClose={() => setSuccessData(null)}
         />
       )}

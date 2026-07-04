@@ -5,12 +5,15 @@ import { useToast } from '@/context/ToastContext';
 import { GiftIcon, TagIcon } from '@/components/icons/Icons';
 import styles from './OrderSummary.module.css';
 
-export default function OrderSummary({ cart, subtotal, shipping, discount, total, paymentMethod, installments, installmentFee, onCouponApplied }) {
+export default function OrderSummary({ cart, subtotal, shipping, discount, total, paymentMethod, installments, installmentFee, serviceFee = 0, serviceFeeActive = false, onCouponApplied }) {
   const [couponCode, setCouponCode] = useState('');
   const [couponMsg,  setCouponMsg]  = useState(null);
   const [applying,   setApplying]   = useState(false);
   const [couponApplied, setCouponApplied] = useState(false);
+  const [feeInfo,    setFeeInfo]    = useState(false);
   const { showToast } = useToast();
+
+  const showFee = serviceFeeActive && serviceFee > 0;
 
   const shippingText = () => {
     if (shipping === 0 && subtotal > 0)   return 'Grátis';
@@ -20,8 +23,10 @@ export default function OrderSummary({ cart, subtotal, shipping, discount, total
   };
 
   const finalTotal = () => {
-    if (paymentMethod === 'Credito' && installmentFee > 0) return total * (1 + installmentFee);
-    return total;
+    let t = total;
+    if (paymentMethod === 'Credito' && installmentFee > 0) t = total * (1 + installmentFee);
+    if (showFee) t += serviceFee;
+    return t;
   };
 
   const handleCoupon = async () => {
@@ -130,6 +135,43 @@ export default function OrderSummary({ cart, subtotal, shipping, discount, total
         <div className={styles.row}><span>Subtotal</span><span>R$ {subtotal.toFixed(2)}</span></div>
         <div className={styles.row}><span>Frete</span><span>{shippingText()}</span></div>
         <div className={styles.row}><span>Desconto</span><span>{discount > 0 ? `-R$ ${discount.toFixed(2)}` : 'R$ 0,00'}</span></div>
+        {showFee && (
+          <div className={styles.row} style={{ position: 'relative' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              Taxa de serviço
+              <button
+                type="button"
+                onClick={() => setFeeInfo(v => !v)}
+                aria-label="O que é a taxa de serviço?"
+                style={{
+                  width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                  border: '1.5px solid var(--border-strong)', background: 'transparent',
+                  color: 'var(--text-secondary)', fontSize: '.72rem', fontWeight: 700,
+                  lineHeight: 1, cursor: 'pointer', display: 'inline-flex',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >?</button>
+            </span>
+            <span>R$ {serviceFee.toFixed(2)}</span>
+            {feeInfo && (
+              <div
+                role="tooltip"
+                style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
+                  marginTop: 6, padding: '.75rem .85rem',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 'var(--r-md)', boxShadow: '0 8px 24px rgba(26,18,24,.16)',
+                  fontSize: '.8rem', lineHeight: 1.5, color: 'var(--text-secondary)',
+                }}
+              >
+                Taxa do <strong>pagamento instantâneo</strong>. Ela ajuda a manter o site no ar,
+                as ferramentas de pagamento e a <strong>confirmação automática</strong> do seu
+                pedido — assim ele é aprovado na hora e você recebe mais rápido. Prefere não
+                pagar? Basta escolher <strong>pagar na retirada/entrega</strong>.
+              </div>
+            )}
+          </div>
+        )}
         <div className={`${styles.row} ${styles.total}`}>
           <span><strong>Total</strong></span>
           <span><strong>R$ {finalTotal().toFixed(2)}</strong></span>
