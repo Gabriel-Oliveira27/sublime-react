@@ -1,6 +1,5 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { productImagePath, PLACEHOLDER_IMG_SMALL } from '@/lib/utils';

@@ -6,7 +6,13 @@ import styles from './ProductDescription.module.css';
 function renderMarkdown(md) {
   if (!md) return '';
   return md
+    // Escapa TODOS os metacaracteres de HTML antes de qualquer transformação —
+    // inclusive aspas. Sem escapar " e ', um link markdown com aspas na URL
+    // (ex.: [x](https://a" onmouseover="alert(1)) permitia injeção de atributo
+    // (XSS armazenado) no <a href="...">. As aspas que usamos nas tags geradas
+    // são adicionadas DEPOIS deste passo, então continuam válidas.
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
     .replace(/^### (.+)$/gm, '<h4>$1</h4>')
     .replace(/^## (.+)$/gm,  '<h3>$1</h3>')
     .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')

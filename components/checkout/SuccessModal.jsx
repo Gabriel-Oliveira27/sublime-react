@@ -28,15 +28,20 @@ export default function SuccessModal({ orderId, paymentMethod, deliveryType, pic
   const isPickup = deliveryType === 'retirada';
   const dateStr  = pickupDate ? `${pickupTime} do dia ${formatDateBR(pickupDate)}` : '';
 
-  const getMessage = () => {
+  // Renderiza a mensagem em JSX (sem dangerouslySetInnerHTML). Antes, orderId e
+  // dateStr eram interpolados direto em string HTML — superfície de XSS
+  // desnecessária. Em JSX o React escapa os valores automaticamente.
+  const id  = <strong>{orderId}</strong>;
+  const when = <strong>{dateStr}</strong>;
+  const renderMessage = () => {
     if (isPickup) {
-      if (paymentMethod === 'Dinheiro') return `Pedido <strong>${orderId}</strong> reservado!<br/>Aguardamos você às <strong>${dateStr}</strong>.`;
-      if (paymentMethod === 'PIX')     return `Pedido <strong>${orderId}</strong> reservado!<br/>Copie a chave PIX abaixo e envie o comprovante pelo WhatsApp. Retirada às <strong>${dateStr}</strong>.`;
-      return `Pedido <strong>${orderId}</strong> reservado!<br/>Aguarde o link de pagamento. Retirada às <strong>${dateStr}</strong>.`;
+      if (paymentMethod === 'Dinheiro') return <>Pedido {id} reservado!<br/>Aguardamos você às {when}.</>;
+      if (paymentMethod === 'PIX')     return <>Pedido {id} reservado!<br/>Copie a chave PIX abaixo e envie o comprovante pelo WhatsApp. Retirada às {when}.</>;
+      return <>Pedido {id} reservado!<br/>Aguarde o link de pagamento. Retirada às {when}.</>;
     }
-    if (paymentMethod === 'Dinheiro') return `Pedido <strong>${orderId}</strong> reservado!<br/>Prazo de entrega: até <strong>2 dias</strong>. Pagamento na entrega.`;
-    if (paymentMethod === 'PIX')     return `Pedido <strong>${orderId}</strong> reservado!<br/>Envie o comprovante via WhatsApp. Após confirmação, entrega em até <strong>2 dias</strong>.`;
-    return `Pedido <strong>${orderId}</strong> reservado!<br/>Aguarde o link de pagamento. Entrega em <strong>2 dias</strong> após aprovação.`;
+    if (paymentMethod === 'Dinheiro') return <>Pedido {id} reservado!<br/>Prazo de entrega: até <strong>2 dias</strong>. Pagamento na entrega.</>;
+    if (paymentMethod === 'PIX')     return <>Pedido {id} reservado!<br/>Envie o comprovante via WhatsApp. Após confirmação, entrega em até <strong>2 dias</strong>.</>;
+    return <>Pedido {id} reservado!<br/>Aguarde o link de pagamento. Entrega em <strong>2 dias</strong> após aprovação.</>;
   };
 
   const showPIX      = paymentMethod === 'PIX';
@@ -65,7 +70,7 @@ export default function SuccessModal({ orderId, paymentMethod, deliveryType, pic
           <CheckSuccessAnimation size={100}/>
         </div>
 
-        <div className={styles.message} dangerouslySetInnerHTML={{ __html: getMessage() }}/>
+        <div className={styles.message}>{renderMessage()}</div>
 
         {showPIX && (
           <div className={styles.pixKeyBox}>
