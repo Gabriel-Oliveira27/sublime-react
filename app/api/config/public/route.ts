@@ -10,6 +10,7 @@ const PUBLIC_KEYS = [
   'DESCONTO_LINHA_PREPARAR', 'DESCONTO_LINHA_SERVIR',  'DESCONTO_LINHA_ARMAZENAR',
   'FRETE_MODELO', 'FRETE_FAIXAS', 'FRETE_CUSTO_KM', 'FRETE_GRATIS_ACIMA_KM',
   'ORIGEM_ENDERECO', 'ORIGEM_LAT', 'ORIGEM_LON', 'ORIGEM_CEP',
+  'PIX_ONLINE_ATIVO', 'PIX_TAXA_MODO', 'PIX_TAXA_FIXA', 'PIX_TAXA_FAIXAS',
 ]
 
 export async function GET() {
@@ -49,6 +50,11 @@ export async function GET() {
       origem_lat:      m['ORIGEM_LAT']      ?? '',
       origem_lon:      m['ORIGEM_LON']      ?? '',
       origem_cep:      m['ORIGEM_CEP']      ?? '',
+      // PIX online (pagar agora) + taxa de serviço
+      pix_online_ativo: m['PIX_ONLINE_ATIVO'] ?? 'false',
+      pix_taxa_modo:    m['PIX_TAXA_MODO']    ?? 'NULA',
+      pix_taxa_fixa:    m['PIX_TAXA_FIXA']    ?? '{"tipo":"PERCENT","valor":0}',
+      pix_taxa_faixas:  m['PIX_TAXA_FAIXAS']  ?? '[]',
     })
   } catch (err) {
     console.error('[GET /api/config/public]', err)

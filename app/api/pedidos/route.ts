@@ -8,6 +8,7 @@ import { validateCPF } from '@/lib/utils'
 import { PedidoBodySchema } from '@/lib/schemas'
 import { logError } from '@/lib/logger'
 import { CONFIG } from '@/lib/config'
+import { lerPixConfig, calcularTaxaPix, getPixProvider, pixModoMock } from '@/lib/pix'
 
 export async function GET(req: NextRequest) {
   const auth = await autenticar(req)
@@ -89,6 +90,15 @@ export async function POST(req: NextRequest) {
     const changeFor       = payment.changeFor ? parseFloat(String(payment.changeFor)) : null
     const metodoPagamento = toMetodoPagamento(payment.method)
 
+    // PIX "pagar agora": só vale se o método é PIX, o cliente pediu E o servidor
+    // confirma que está LIGADO no banco. A flag do cliente sozinha não adiciona
+    // taxa nem muda o fluxo — blindagem contra manipulação. (Só consulta a
+    // config quando o cliente de fato pediu o PIX instantâneo.)
+    const pixConfig     = (metodoPagamento === 'PIX' && payment.online === true)
+      ? await lerPixConfig(prisma)
+      : null
+    const querPixOnline = !!pixConfig?.ativo
+
     // ─────────────────────────────────────────────────────────────────────
     // Tudo dentro de uma única transação atômica: validação de estoque,
     // decremento, recálculo de preços A PARTIR DO BANCO (nunca confiando nos
@@ -147,6 +157,14 @@ export async function POST(req: NextRequest) {
         totalServidor = +(totalServidor * (1 + fee)).toFixed(2)
       }
 
+      // Taxa de serviço do PIX online — calculada NO SERVIDOR a partir do config
+      // do banco (nunca do cliente). Somada ao total antes de gerar a cobrança.
+      let taxaServico = 0
+      if (querPixOnline) {
+        taxaServico   = calcularTaxaPix(totalServidor, pixConfig)
+        totalServidor = +(totalServidor + taxaServico).toFixed(2)
+      }
+
       const valorALevar = changeFor && changeFor > totalServidor
         ? +(changeFor - totalServidor).toFixed(2)
         : null
@@ -168,6 +186,8 @@ export async function POST(req: NextRequest) {
           parcelas,
           trocoPara:       changeFor ?? null,
           valorALevar,
+          pixOnline:       querPixOnline,
+          taxaServico,
         },
       })
 
@@ -210,7 +230,35 @@ export async function POST(req: NextRequest) {
       })
     )
 
-    return NextResponse.json({ success: true, orderId: pedido.idRastreio }, { status: 201 })
+    // PIX "pagar agora": gera a cobrança no PSP e devolve QR + copia-e-cola.
+    let pixResposta:
+      | { copiaCola: string; qrCodeDataUrl: string; expiraEm: string; taxaServico: number; total: number; mock: boolean }
+      | null = null
+    if (querPixOnline) {
+      try {
+        const charge = await getPixProvider().criarCobranca({
+          valor:       Number(pedido.totalVenda),
+          descricao:   `Pedido ${pedido.idRastreio} — Sublime`,
+          orderId:     pedido.idRastreio,
+          expiraEmMin: 10, // QR e copia-e-cola expiram em 10 min
+        })
+        await prisma.pedido.update({ where: { id: pedido.id }, data: { pspPaymentId: charge.id } })
+        pixResposta = {
+          copiaCola:     charge.copiaCola,
+          qrCodeDataUrl: charge.qrCodeDataUrl,
+          expiraEm:      charge.expiraEm,
+          taxaServico:   Number(pedido.taxaServico),
+          total:         Number(pedido.totalVenda),
+          mock:          pixModoMock(),
+        }
+      } catch (e) {
+        // Não derruba a venda: o pedido fica pendente e o cliente pode pagar na
+        // retirada/entrega. O front trata `pix: null` como fallback.
+        logError('POST /api/pedidos (pix online)', e)
+      }
+    }
+
+    return NextResponse.json({ success: true, orderId: pedido.idRastreio, pix: pixResposta }, { status: 201 })
   } catch (err: any) {
     logError('POST /api/pedidos', err)
     const isBusinessErr = err.message?.includes('insuficiente') ||
