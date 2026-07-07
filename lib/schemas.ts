@@ -54,7 +54,9 @@ export const PedidoBodySchema = z.object({
 
   coupon:              z.string().nullable().optional(),
   total:               z.number().nonnegative(),
-  enderecoEstruturado: z.record(z.string(), z.unknown()).optional(),
+  // O checkout envia `null` na retirada (sem endereço de entrega) — sem o
+  // .nullable() o Zod rejeitava o pedido inteiro com "Dados inválidos".
+  enderecoEstruturado: z.record(z.string(), z.unknown()).nullable().optional(),
 })
 
 export type PedidoBody = z.infer<typeof PedidoBodySchema>

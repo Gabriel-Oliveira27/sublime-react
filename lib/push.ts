@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { notificarVendedoresWeb } from '@/lib/webpush'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Push (Expo) — notifica os apps dos vendedores quando algo acontece (ex.: novo
@@ -57,19 +58,25 @@ export interface PushMessage {
 }
 
 /**
- * Envia uma notificação para TODOS os dispositivos registrados (vendedores).
+ * Envia uma notificação para TODOS os dispositivos registrados (vendedores):
+ * apps Expo (APK) e dashboards instalados como PWA (web push).
  * Pensado para fire-and-forget (chamar via `after()`): nunca lança — apenas
  * loga. Tokens inválidos (DeviceNotRegistered) são removidos automaticamente.
  */
 export async function sendPushToAll(msg: PushMessage): Promise<void> {
+  // Web push (dashboard PWA) — roda em paralelo ao Expo, nunca lança.
+  const webPromise = notificarVendedoresWeb({ title: msg.title, body: msg.body })
+    .catch(() => {})
+
   let tokens: string[]
   try {
     tokens = await readTokens()
   } catch (e) {
     console.warn('[push] não foi possível ler tokens', e)
+    await webPromise
     return
   }
-  if (tokens.length === 0) return
+  if (tokens.length === 0) { await webPromise; return }
 
   const messages = tokens.map((to) => ({
     to,
@@ -114,4 +121,6 @@ export async function sendPushToAll(msg: PushMessage): Promise<void> {
     const next = tokens.filter((t) => !invalid.includes(t))
     await writeTokens(next).catch(() => {})
   }
+
+  await webPromise
 }

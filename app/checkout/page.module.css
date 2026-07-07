@@ -35,9 +35,12 @@
   padding-top: 2rem;
   border-top: 2px solid var(--border);
 }
-.actions .btn { flex: 1; border-radius: var(--r-md); height: 48px; }
+/* `.btn` vem do globals.css — precisa de :global() para casar dentro de um
+   CSS Module (sem isso o seletor é localizado e a regra morre em silêncio,
+   deixando o .finishBtn com flex-basis 0 e altura colapsada no mobile). */
+.actions :global(.btn) { flex: 1; border-radius: var(--r-md); height: 48px; min-height: 48px; }
 
-.finishBtn { position: relative; flex: 1; }
+.finishBtn { position: relative; flex: 1; min-height: 48px; }
 
 /* Delivery options */
 .deliveryOpts {
@@ -202,7 +205,7 @@
   .payMethods   { grid-template-columns: 1fr; }
   .actions { flex-direction: column; }
   /* Em coluna, flex:1 (basis 0) colapsava a altura dos botões — manter full-width e altura fixa */
-  .actions .btn { flex: 0 0 auto; width: 100%; }
+  .actions :global(.btn) { flex: 0 0 auto; width: 100%; }
 }
 @media (max-width: 480px) {
   .stepTitle { font-size: 1.35rem; }

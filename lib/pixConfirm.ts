@@ -4,6 +4,7 @@
 
 import { prisma } from './prisma'
 import { sendPushToAll } from './push'
+import { notificarPedidoWeb } from './webpush'
 
 interface ConfirmarInput {
   pspPaymentId?: string
@@ -37,6 +38,15 @@ export async function confirmarPagamentoPix(input: ConfirmarInput): Promise<bool
     title: 'Pagamento confirmado',
     body:  `Pedido ${pedido.idRastreio} foi pago via PIX.`,
     data:  { type: 'pagamento-confirmado', orderId: pedido.idRastreio },
+  }).catch(() => {})
+
+  // Avisa o CLIENTE (PWA da loja), se ele ativou notificações.
+  const retirada = pedido.endereco.startsWith('Retirada')
+  notificarPedidoWeb(pedido.idRastreio, {
+    title: 'Seu pagamento foi confirmado!',
+    body: retirada
+      ? 'Agora é só ir retirar no endereço do vendedor.'
+      : 'Agora é só esperar o seu produto chegar.',
   }).catch(() => {})
 
   return true

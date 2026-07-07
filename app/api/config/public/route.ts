@@ -11,6 +11,7 @@ const PUBLIC_KEYS = [
   'FRETE_MODELO', 'FRETE_FAIXAS', 'FRETE_CUSTO_KM', 'FRETE_GRATIS_ACIMA_KM',
   'ORIGEM_ENDERECO', 'ORIGEM_LAT', 'ORIGEM_LON', 'ORIGEM_CEP',
   'PIX_ONLINE_ATIVO', 'PIX_TAXA_MODO', 'PIX_TAXA_FIXA', 'PIX_TAXA_FAIXAS',
+  'PIX_TAXA_FRASE',
 ]
 
 export async function GET() {
@@ -55,6 +56,8 @@ export async function GET() {
       pix_taxa_modo:    m['PIX_TAXA_MODO']    ?? 'NULA',
       pix_taxa_fixa:    m['PIX_TAXA_FIXA']    ?? '{"tipo":"PERCENT","valor":0}',
       pix_taxa_faixas:  m['PIX_TAXA_FAIXAS']  ?? '[]',
+      // Frase exibida no "?" da taxa de serviço (vazia = texto padrão da loja)
+      pix_taxa_frase:   m['PIX_TAXA_FRASE']   ?? '',
     })
   } catch (err) {
     console.error('[GET /api/config/public]', err)

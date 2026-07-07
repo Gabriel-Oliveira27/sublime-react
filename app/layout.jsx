@@ -5,6 +5,7 @@ import { ConfigProvider } from '@/context/ConfigContext';
 import { ToastProvider }  from '@/context/ToastContext';
 import ToastContainer     from '@/components/ui/ToastContainer';
 import ErrorBoundary      from '@/components/ErrorBoundary';
+import PwaProvider        from '@/components/pwa/PwaProvider';
 
 // Fonte cursiva do branding "Sublime". Auto-hospedada pelo Next (mais
 // confiável que @import do Google Fonts, que pode falhar e cair no `cursive`
@@ -15,6 +16,11 @@ const brandFont = Allura({
   display:  'swap',
   variable: '--font-brand',
 });
+
+// Cor da barra do navegador/janela quando instalado como PWA
+export const viewport = {
+  themeColor: '#E84D82',
+};
 
 export const metadata = {
   title: 'Sublime — Produtos Tupperware',
@@ -43,6 +49,7 @@ export default function RootLayout({ children }) {
             <ErrorBoundary>
             {children}
             <ToastContainer />
+            <PwaProvider />
             </ErrorBoundary>
           </CartProvider>
         </ConfigProvider>

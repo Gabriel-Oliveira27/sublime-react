@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { exigirPermissao } from '@/lib/middleware'
+import { notificarPedidoWeb } from '@/lib/webpush'
 
 export async function PATCH(
   req: NextRequest,
@@ -16,10 +17,25 @@ export async function PATCH(
   }
 
   try {
+    const antes  = await prisma.pedido.findUnique({
+      where: { id: idNum }, select: { pagamento: true },
+    })
     const pedido = await prisma.pedido.update({
       where: { id: idNum },
       data:  { pagamento: 'REALIZADO' },
     })
+
+    // Confirmação manual (dinheiro/PIX no ato) → notifica o cliente (PWA),
+    // apenas na transição PENDENTE → REALIZADO.
+    if (antes?.pagamento !== 'REALIZADO') {
+      const retirada = pedido.endereco.startsWith('Retirada')
+      after(() => notificarPedidoWeb(pedido.idRastreio, {
+        title: 'Seu pagamento foi confirmado!',
+        body: retirada
+          ? 'Agora é só ir retirar no endereço do vendedor.'
+          : 'Agora é só esperar o seu produto chegar.',
+      }))
+    }
 
     return NextResponse.json(pedido)
   } catch (err) {

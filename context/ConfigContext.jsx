@@ -22,6 +22,7 @@ const DEFAULTS = {
   pagamentoCredito:  true,
   pagamentoDinheiro: true,
   pixOnline:         PIX_TAXA_CONFIG_VAZIO,
+  pixTaxaFrase:      '',
   frete: DEFAULT_FRETE,
   loaded: false,
 };
@@ -50,6 +51,7 @@ export function ConfigProvider({ children }) {
           pagamentoCredito:  data.pagamento_credito  !== 'false',
           pagamentoDinheiro: data.pagamento_dinheiro !== 'false',
           pixOnline:         pixConfigDoPublic(data),
+          pixTaxaFrase:      typeof data.pix_taxa_frase === 'string' ? data.pix_taxa_frase : '',
           // Frete vem como objeto completo — mantém defaults para campos ausentes
           frete: data.frete ? { ...DEFAULT_FRETE, ...data.frete } : DEFAULT_FRETE,
           loaded: true,

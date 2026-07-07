@@ -23,7 +23,9 @@ const CSP = [
   "frame-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "worker-src blob:",
+  // 'self' permite registrar o service worker do PWA (/sw.js); blob: cobre
+  // workers criados em memória por libs.
+  "worker-src 'self' blob:",
 ].join('; ')
 
 const nextConfig = {
@@ -41,7 +43,9 @@ const nextConfig = {
           { key: 'X-Content-Type-Options',  value: 'nosniff' },
           { key: 'X-Frame-Options',          value: 'DENY' },
           { key: 'Referrer-Policy',          value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy',       value: 'geolocation=(), microphone=(), camera=(), payment=()' },
+          // geolocation=(self): o checkout usa o GPS no botão "Usar minha
+          // localização" — geolocation=() bloqueava o recurso na própria loja.
+          { key: 'Permissions-Policy',       value: 'geolocation=(self), microphone=(), camera=(), payment=()' },
         ],
       },
       {
