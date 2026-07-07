@@ -12,6 +12,8 @@ const PUBLIC_KEYS = [
   'ORIGEM_ENDERECO', 'ORIGEM_LAT', 'ORIGEM_LON', 'ORIGEM_CEP',
   'PIX_ONLINE_ATIVO', 'PIX_TAXA_MODO', 'PIX_TAXA_FIXA', 'PIX_TAXA_FAIXAS',
   'PIX_TAXA_FRASE',
+  'RECEBIMENTO_ENTREGA', 'RECEBIMENTO_RETIRADA',
+  'RETIRADA_HORA_INICIO', 'RETIRADA_HORA_FIM',
 ]
 
 export async function GET() {
@@ -58,6 +60,11 @@ export async function GET() {
       pix_taxa_faixas:  m['PIX_TAXA_FAIXAS']  ?? '[]',
       // Frase exibida no "?" da taxa de serviço (vazia = texto padrão da loja)
       pix_taxa_frase:   m['PIX_TAXA_FRASE']   ?? '',
+      // Recebimento: formas oferecidas + janela de horários da retirada
+      recebimento_entrega:  m['RECEBIMENTO_ENTREGA']  ?? 'true',
+      recebimento_retirada: m['RECEBIMENTO_RETIRADA'] ?? 'true',
+      retirada_hora_inicio: m['RETIRADA_HORA_INICIO'] ?? '08:00',
+      retirada_hora_fim:    m['RETIRADA_HORA_FIM']    ?? '19:00',
     })
   } catch (err) {
     console.error('[GET /api/config/public]', err)

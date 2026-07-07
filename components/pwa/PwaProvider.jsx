@@ -2,6 +2,9 @@
 import { useEffect, useRef } from 'react';
 import { useCart } from '@/context/CartContext';
 import { registrarSW, pushSuportado, pingCarrinho, agendarLembreteLocal } from '@/lib/pushClient';
+// Import com efeito colateral: registra o listener de beforeinstallprompt no
+// boot, antes de qualquer botão "Instalar App" montar.
+import '@/components/pwa/useInstallPrompt';
 
 /**
  * Liga o PWA da loja:

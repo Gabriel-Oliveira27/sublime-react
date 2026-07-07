@@ -42,13 +42,36 @@
 
 .finishBtn { position: relative; flex: 1; min-height: 48px; }
 
-/* Delivery options */
+/* Delivery options — auto-fit: com uma única forma habilitada o card ocupa a linha toda */
 .deliveryOpts {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 2rem;
 }
+
+/* Retirada: Quem vai retirar | Data | Horário na mesma linha (desktop) */
+.pickupRow {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 1rem;
+}
+
+/* Botão "Eu mesmo vou retirar" — preenche o nome da etapa 1 */
+.selfPickupBtn {
+  display: inline-flex; align-items: center; gap: .45rem;
+  margin-bottom: 1rem;
+  padding: .5rem .9rem;
+  background: var(--rose-blush);
+  border: 1.5px dashed var(--accent);
+  border-radius: var(--r-full);
+  color: var(--accent);
+  font-weight: 600; font-size: .84rem;
+  cursor: pointer;
+  transition: all var(--t-base);
+  font-family: 'DM Sans', sans-serif;
+}
+.selfPickupBtn:hover { background: var(--accent); color: white; border-style: solid; }
 .delivOpt {
   padding: 1.5rem 1rem;
   border: 2px solid var(--border);
@@ -202,6 +225,8 @@
   .main { padding: 0 1rem; margin-top: 1rem; }
   .form { padding: 1.5rem 1rem; border: none; }
   .deliveryOpts { grid-template-columns: 1fr; }
+  /* No celular os 3 campos da retirada voltam a empilhar */
+  .pickupRow { grid-template-columns: 1fr; gap: 0; }
   .payMethods   { grid-template-columns: 1fr; }
   .actions { flex-direction: column; }
   /* Em coluna, flex:1 (basis 0) colapsava a altura dos botões — manter full-width e altura fixa */
