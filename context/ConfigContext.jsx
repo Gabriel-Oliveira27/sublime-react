@@ -23,6 +23,8 @@ const DEFAULTS = {
   pagamentoDinheiro: true,
   pixOnline:         PIX_TAXA_CONFIG_VAZIO,
   pixTaxaFrase:      '',
+  recebimento:       { entrega: true, retirada: true },
+  retiradaHorario:   { inicio: '08:00', fim: '19:00' },
   frete: DEFAULT_FRETE,
   loaded: false,
 };
@@ -52,6 +54,14 @@ export function ConfigProvider({ children }) {
           pagamentoDinheiro: data.pagamento_dinheiro !== 'false',
           pixOnline:         pixConfigDoPublic(data),
           pixTaxaFrase:      typeof data.pix_taxa_frase === 'string' ? data.pix_taxa_frase : '',
+          recebimento: {
+            entrega:  data.recebimento_entrega  !== 'false',
+            retirada: data.recebimento_retirada !== 'false',
+          },
+          retiradaHorario: {
+            inicio: data.retirada_hora_inicio || '08:00',
+            fim:    data.retirada_hora_fim    || '19:00',
+          },
           // Frete vem como objeto completo — mantém defaults para campos ausentes
           frete: data.frete ? { ...DEFAULT_FRETE, ...data.frete } : DEFAULT_FRETE,
           loaded: true,

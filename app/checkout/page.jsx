@@ -434,7 +434,37 @@ export default function CheckoutPage() {
   const E = (key) => errors[key] ? <span className="error-message">{errors[key]}</span> : null;
 
   const STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
-  const TIMES  = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00'];
+
+  /* Slots de retirada de 30 em 30 min dentro da janela configurada no
+     dashboard (RETIRADA_HORA_INICIO/FIM). Ex.: 08:00–13:00 → 08:00, 08:30… 13:00 */
+  const TIMES = (() => {
+    const toMin = (s) => {
+      const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || '').trim());
+      return m ? Math.min(23, parseInt(m[1])) * 60 + (parseInt(m[2]) >= 30 ? 30 : 0) : null;
+    };
+    let ini = toMin(dynamicConfig?.retiradaHorario?.inicio) ?? 8 * 60;
+    let fim = toMin(dynamicConfig?.retiradaHorario?.fim)    ?? 19 * 60;
+    if (fim < ini) [ini, fim] = [fim, ini];
+    const slots = [];
+    for (let t = ini; t <= fim; t += 30) {
+      slots.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`);
+    }
+    return slots;
+  })();
+
+  /* Formas de recebimento habilitadas no dashboard. Se as duas estiverem
+     desligadas (config quebrada), mantém as duas — a loja nunca fica sem opção. */
+  const recebCfg   = dynamicConfig?.recebimento ?? { entrega: true, retirada: true };
+  const nenhumaOn  = !recebCfg.entrega && !recebCfg.retirada;
+  const retiradaOn = recebCfg.retirada || nenhumaOn;
+  const entregaOn  = recebCfg.entrega  || nenhumaOn;
+
+  // Só uma forma disponível → já entra selecionada na etapa 2
+  useEffect(() => {
+    if (!dynamicConfig?.loaded || delivery.type) return;
+    if (retiradaOn && !entregaOn) setDelivery(d => ({ ...d, type: 'retirada', shippingCost: 0 }));
+    else if (entregaOn && !retiradaOn) setDelivery(d => ({ ...d, type: 'entrega' }));
+  }, [dynamicConfig?.loaded, retiradaOn, entregaOn, delivery.type]);
 
   return (
     <>
@@ -532,9 +562,9 @@ export default function CheckoutPage() {
                 <h2 className={styles.stepTitle}>Como deseja receber?</h2>
                 <div className={styles.deliveryOpts}>
                   {[
-                    { key: 'retirada', Icon: MapPinIcon, title: 'Retirada', sub: 'Buscar no local — grátis' },
-                    { key: 'entrega',  Icon: TruckIcon,  title: 'Entrega',  sub: 'Receber em casa' },
-                  ].map(({ key, Icon, title, sub }) => (
+                    { key: 'retirada', Icon: MapPinIcon, title: 'Retirada', sub: 'Buscar no local — grátis', enabled: retiradaOn },
+                    { key: 'entrega',  Icon: TruckIcon,  title: 'Entrega',  sub: 'Receber em casa',          enabled: entregaOn },
+                  ].filter(o => o.enabled).map(({ key, Icon, title, sub }) => (
                     <div key={key}
                       className={`${styles.delivOpt} ${delivery.type === key ? styles.selected : ''}`}
                       onClick={() => setDelivery(d => ({ ...d, type: key, shippingCost: key === 'retirada' ? 0 : d.shippingCost }))}
@@ -549,13 +579,19 @@ export default function CheckoutPage() {
                 {delivery.type === 'retirada' && (
                   <>
                     <div className="info-box"><strong>Endereço de Retirada</strong><br/>{CONFIG.ORIGIN.DISPLAY}</div>
-                    <div className="form-group">
-                      <label>Quem vai retirar? *</label>
-                      <input className="form-input" placeholder="Nome completo" value={delivery.pickupWho}
-                        onChange={e => setDelivery(d => ({ ...d, pickupWho: e.target.value }))}/>
-                      {E('pickupWho')}
-                    </div>
-                    <div className="form-row">
+                    {customer.name.trim() && delivery.pickupWho.trim() !== customer.name.trim() && (
+                      <button type="button" className={styles.selfPickupBtn}
+                        onClick={() => setDelivery(d => ({ ...d, pickupWho: customer.name.trim() }))}>
+                        <CheckCircleIcon size={15}/> Eu mesmo vou retirar
+                      </button>
+                    )}
+                    <div className={styles.pickupRow}>
+                      <div className="form-group">
+                        <label>Quem vai retirar? *</label>
+                        <input className="form-input" placeholder="Nome completo" value={delivery.pickupWho}
+                          onChange={e => setDelivery(d => ({ ...d, pickupWho: e.target.value }))}/>
+                        {E('pickupWho')}
+                      </div>
                       <div className="form-group">
                         <label>Data *</label>
                         <input type="date" className="form-input" value={delivery.pickupDate}

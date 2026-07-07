@@ -1,11 +1,13 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { CONFIG } from '@/lib/config';
-import { WhatsAppIcon, PackageIcon } from '@/components/icons/Icons';
+import { useInstallPrompt } from '@/components/pwa/useInstallPrompt';
+import { WhatsAppIcon, PackageIcon, DownloadIcon } from '@/components/icons/Icons';
 import styles from './SideMenu.module.css';
 
 export default function SideMenu({ open, onClose }) {
   const router = useRouter();
+  const { canInstall, install } = useInstallPrompt();
   const go = (path) => { onClose(); router.push(path); };
   const openWhatsApp = () => {
     const msg = encodeURIComponent('Olá! Gostaria de mais informações sobre os produtos Sublime.');
@@ -32,6 +34,13 @@ export default function SideMenu({ open, onClose }) {
         <PackageIcon size={22}/>
         <span>Rastrear pedido</span>
       </div>
+      {/* Só aparece quando o navegador oferece a instalação (não instalado ainda) */}
+      {canInstall && (
+        <div className={styles.item} onClick={async () => { await install(); onClose(); }}>
+          <DownloadIcon size={22}/>
+          <span>Instalar App</span>
+        </div>
+      )}
     </nav>
   );
 }

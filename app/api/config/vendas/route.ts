@@ -35,6 +35,13 @@ const EXTRA_DEFAULTS: Record<string, string> = {
   PIX_TAXA_FAIXAS:         '[]',
   // Frase exibida no "?" da taxa de serviço no checkout (vazia = texto padrão)
   PIX_TAXA_FRASE:          '',
+  // ── Recebimento ─────────────────────────────────────────────────────────────
+  // Formas de recebimento oferecidas no checkout
+  RECEBIMENTO_ENTREGA:     'true',
+  RECEBIMENTO_RETIRADA:    'true',
+  // Janela de horários de retirada (o checkout monta slots de 30 em 30 min)
+  RETIRADA_HORA_INICIO:    '08:00',
+  RETIRADA_HORA_FIM:       '19:00',
 }
 
 // Chaves que o PATCH { chave, valor } pode gravar (allow-list — nunca gravar
@@ -49,8 +56,19 @@ const ALL_KEYS = ['PIX_KEY', 'WHATSAPP', ...Object.keys(EXTRA_DEFAULTS)]
 
 /** Normaliza o valor conforme a chave (toggles → true/false, descontos → 0-100). */
 function normalizeConfigValue(chave: string, raw: string): string {
-  if (chave === 'WHATSAPP_ATIVO' || chave.startsWith('PAGAMENTO_') || chave === 'PIX_ONLINE_ATIVO') {
+  if (
+    chave === 'WHATSAPP_ATIVO' || chave.startsWith('PAGAMENTO_') ||
+    chave === 'PIX_ONLINE_ATIVO' || chave.startsWith('RECEBIMENTO_')
+  ) {
     return raw === 'true' ? 'true' : 'false'
+  }
+  if (chave === 'RETIRADA_HORA_INICIO' || chave === 'RETIRADA_HORA_FIM') {
+    // HH:MM com minutos travados em 00 ou 30 (os slots são de meia em meia hora)
+    const m = /^(\d{1,2}):(\d{2})$/.exec(raw.trim())
+    const hora = m ? Math.min(23, Math.max(0, parseInt(m[1]))) : null
+    if (hora === null) return chave === 'RETIRADA_HORA_INICIO' ? '08:00' : '19:00'
+    const minuto = parseInt(m![2]) >= 30 ? '30' : '00'
+    return `${String(hora).padStart(2, '0')}:${minuto}`
   }
   if (chave === 'DESCONTO_GLOBAL' || chave.startsWith('DESCONTO_LINHA_')) {
     return String(Math.max(0, Math.min(100, parseInt(raw) || 0)))

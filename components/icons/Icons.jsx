@@ -198,6 +198,16 @@ export function StarIcon({ size = 24, className }) {
   );
 }
 
+export function DownloadIcon({ size = 24, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  );
+}
+
 export function BellIcon({ size = 24, className }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
