@@ -4,17 +4,21 @@ import { useRouter } from 'next/navigation';
 import { CONFIG } from '@/lib/config';
 import { formatDateBR } from '@/lib/utils';
 import { getPixStatus, simularPixPagamento } from '@/lib/api';
+import { pushSuportado, ativarNotificacoes, acompanharPedido } from '@/lib/pushClient';
 import CheckSuccessAnimation from '@/components/icons/CheckSuccessAnimation';
-import { CopyIcon, WhatsAppIcon } from '@/components/icons/Icons';
+import { BellIcon, CopyIcon, WhatsAppIcon } from '@/components/icons/Icons';
 import { useToast } from '@/context/ToastContext';
 import styles from './SuccessModal.module.css';
 
-export default function SuccessModal({ orderId, paymentMethod, deliveryType, pickupDate, pickupTime, pix, onClose }) {
+export default function SuccessModal({ orderId, paymentMethod, deliveryType, pickupDate, pickupTime, pix, pixOnlineAtivo = false, onClose }) {
   const router        = useRouter();
   const { showToast } = useToast();
   const [pixKey, setPixKey] = useState('');
 
   const isOnlinePix = !!pix;
+  // Com o PIX online ativo, quem não pagou pelo QR paga NA HORA da
+  // retirada/entrega, direto com o vendedor — a chave cadastrada não aparece.
+  const isPixNoAto  = paymentMethod === 'PIX' && !pix && pixOnlineAtivo;
   const [paid,       setPaid]       = useState(false);
   const [simulating, setSimulating] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(() => {
@@ -29,9 +33,69 @@ export default function SuccessModal({ orderId, paymentMethod, deliveryType, pic
     return () => { document.body.style.overflow = ''; };
   }, []);
 
+  /* ── Notificações de status do pedido (PWA) ──
+     'off'  → oferece o botão de ativar; 'on' → pedido já vinculado;
+     'hidden' → sem suporte/permissão negada/sem VAPID no servidor. */
+  const [notif, setNotif] = useState('hidden');
+  const [notifBusy, setNotifBusy] = useState(false);
+  useEffect(() => {
+    if (!pushSuportado()) return;
+    if (Notification.permission === 'granted') {
+      // Já autorizou antes: vincula o pedido silenciosamente
+      acompanharPedido(orderId).then(ok => setNotif(ok ? 'on' : 'hidden'));
+    } else if (Notification.permission === 'default') {
+      setNotif('off');
+    }
+  }, [orderId]);
+
+  const doAtivarNotif = async () => {
+    setNotifBusy(true);
+    try {
+      const sub = await ativarNotificacoes('cliente');
+      if (sub && await acompanharPedido(orderId)) {
+        setNotif('on');
+        showToast('Notificações ativadas!', 'success');
+      } else {
+        setNotif('hidden');
+      }
+    } finally {
+      setNotifBusy(false);
+    }
+  };
+
+  const notifBox = notif === 'hidden' ? null : (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '.65rem',
+      margin: '.85rem 0', padding: '.75rem .85rem',
+      background: 'var(--lavender-pale)', border: '1px solid var(--lavender)',
+      borderRadius: 'var(--r-md)', fontSize: '.84rem', color: 'var(--text-primary)',
+      textAlign: 'left',
+    }}>
+      <span style={{ flexShrink: 0, color: 'var(--accent-2)', display: 'inline-flex' }}><BellIcon size={20}/></span>
+      {notif === 'on' ? (
+        <span>Você receberá notificações com o status deste pedido.</span>
+      ) : (
+        <>
+          <span style={{ flex: 1 }}>Quer acompanhar o pedido por notificações?</span>
+          <button
+            onClick={doAtivarNotif}
+            disabled={notifBusy}
+            style={{
+              flexShrink: 0, padding: '.45rem .8rem', border: 'none',
+              borderRadius: 'var(--r-sm)', background: 'var(--accent-2)',
+              color: 'white', fontWeight: 600, fontSize: '.8rem',
+              cursor: notifBusy ? 'wait' : 'pointer',
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >{notifBusy ? 'Ativando…' : 'Ativar'}</button>
+        </>
+      )}
+    </div>
+  );
+
   // Fluxo manual: busca a chave PIX estática do banco
   useEffect(() => {
-    if (isOnlinePix || paymentMethod !== 'PIX') return;
+    if (isOnlinePix || isPixNoAto || paymentMethod !== 'PIX') return;
     fetch(`${CONFIG.API.VERCEL_URL}/api/config/pix`)
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data?.chave) setPixKey(data.chave); })
@@ -58,10 +122,12 @@ export default function SuccessModal({ orderId, paymentMethod, deliveryType, pic
   const renderMessage = () => {
     if (isPickup) {
       if (paymentMethod === 'Dinheiro') return <>Pedido {id} reservado!<br/>Aguardamos você às {when}.</>;
+      if (isPixNoAto)                   return <>Pedido {id} reservado!<br/>Você paga via PIX na hora da retirada, direto com o vendedor. Aguardamos você às {when}.</>;
       if (paymentMethod === 'PIX')     return <>Pedido {id} reservado!<br/>Copie a chave PIX abaixo e envie o comprovante pelo WhatsApp. Retirada às {when}.</>;
       return <>Pedido {id} reservado!<br/>Aguarde o link de pagamento. Retirada às {when}.</>;
     }
     if (paymentMethod === 'Dinheiro') return <>Pedido {id} reservado!<br/>Prazo de entrega: até <strong>2 dias</strong>. Pagamento na entrega.</>;
+    if (isPixNoAto)                   return <>Pedido {id} reservado!<br/>Você paga via PIX na hora da entrega, direto com o entregador. Prazo de entrega: até <strong>2 dias</strong>.</>;
     if (paymentMethod === 'PIX')     return <>Pedido {id} reservado!<br/>Envie o comprovante via WhatsApp. Após confirmação, entrega em até <strong>2 dias</strong>.</>;
     return <>Pedido {id} reservado!<br/>Aguarde o link de pagamento. Entrega em <strong>2 dias</strong> após aprovação.</>;
   };
@@ -105,6 +171,7 @@ export default function SuccessModal({ orderId, paymentMethod, deliveryType, pic
             <>
               <div className={styles.animWrap}><CheckSuccessAnimation size={100}/></div>
               <div className={styles.message}>Pagamento confirmado! Pedido {id} pago com sucesso.</div>
+              {notifBox}
               <div className={styles.actions}>
                 <button className={styles.btnClose} onClick={handleClose}>Concluir</button>
               </div>
@@ -153,6 +220,7 @@ export default function SuccessModal({ orderId, paymentMethod, deliveryType, pic
                   <p style={{ textAlign: 'center', fontSize: '.78rem', color: 'var(--text-muted)', marginTop: '.5rem' }}>
                     A confirmação é automática. Acompanhe em Minhas Compras.
                   </p>
+                  {notifBox}
                 </>
               )}
             </>
@@ -163,7 +231,9 @@ export default function SuccessModal({ orderId, paymentMethod, deliveryType, pic
 
             <div className={styles.message}>{renderMessage()}</div>
 
-            {paymentMethod === 'PIX' && (
+            {notifBox}
+
+            {paymentMethod === 'PIX' && !isPixNoAto && (
               <div className={styles.pixKeyBox}>
                 <span className={styles.pixKeyLabel}>Chave PIX </span>
                 <span className={styles.pixKeyValue}>{pixKey}</span>
@@ -171,7 +241,7 @@ export default function SuccessModal({ orderId, paymentMethod, deliveryType, pic
             )}
 
             <div className={styles.actions}>
-              {paymentMethod === 'PIX' && (
+              {paymentMethod === 'PIX' && !isPixNoAto && (
                 <button className={styles.btnPix} onClick={() => copyText(pixKey, 'Chave PIX copiada!')}>
                   <CopyIcon size={18}/> Copiar chave PIX
                 </button>

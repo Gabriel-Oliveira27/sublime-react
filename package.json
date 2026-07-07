@@ -21,6 +21,7 @@
     "qrcode": "^1.5.4",
     "react": "^19",
     "react-dom": "^19",
+    "web-push": "^3.6.7",
     "ws": "^8.20.1",
     "zod": "^4.4.3"
   },
@@ -30,6 +31,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.1",
     "eslint": "^9",
     "eslint-config-next": "15.5.18",

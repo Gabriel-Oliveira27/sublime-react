@@ -33,6 +33,8 @@ const EXTRA_DEFAULTS: Record<string, string> = {
   PIX_TAXA_FIXA:           '{"tipo":"PERCENT","valor":0}',
   // FAIXAS: [{ min, tipo, valor }] — taxa por valor mínimo de compra
   PIX_TAXA_FAIXAS:         '[]',
+  // Frase exibida no "?" da taxa de serviço no checkout (vazia = texto padrão)
+  PIX_TAXA_FRASE:          '',
 }
 
 // Chaves que o PATCH { chave, valor } pode gravar (allow-list — nunca gravar
@@ -59,6 +61,11 @@ function normalizeConfigValue(chave: string, raw: string): string {
   if (chave === 'PIX_TAXA_FIXA' || chave === 'PIX_TAXA_FAIXAS') {
     // Só grava se for JSON válido — nunca aceita string arbitrária do cliente.
     try { JSON.parse(raw); return raw } catch { return chave === 'PIX_TAXA_FAIXAS' ? '[]' : '{"tipo":"PERCENT","valor":0}' }
+  }
+  if (chave === 'PIX_TAXA_FRASE') {
+    // Texto livre exibido no checkout (React escapa na renderização) — só
+    // limita o tamanho para não virar um parágrafo gigante no tooltip.
+    return raw.trim().slice(0, 300)
   }
   return raw
 }

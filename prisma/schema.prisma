@@ -83,6 +83,25 @@ model Pedido {
   pspPaymentId    String?         @unique
 }
 
+// ── Web Push (PWA) ────────────────────────────────────────────────────────────
+// Assinaturas de notificação do navegador. escopo distingue quem recebe o quê:
+//   'cliente'  → comprador na loja (status do pedido + lembrete de carrinho)
+//   'vendedor' → dashboard instalado como PWA (novo pedido, pagamento etc.)
+model WebPushSub {
+  id            Int       @id @default(autoincrement())
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  escopo        String    @default("cliente")
+  // idRastreio dos pedidos que esta assinatura acompanha (só escopo cliente)
+  pedidos       String[]  @default([])
+  // Lembrete de carrinho abandonado: qtd de itens + última atividade + último aviso
+  carrinhoQtd   Int       @default(0)
+  carrinhoEm    DateTime?
+  carrinhoAviso DateTime?
+  criadoEm      DateTime  @default(now())
+}
+
 model Cliente {
   id        Int      @id @default(autoincrement())
   nome      String

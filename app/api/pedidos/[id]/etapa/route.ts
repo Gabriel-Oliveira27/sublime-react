@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { exigirPermissao } from '@/lib/middleware'
+import { notificarPedidoWeb } from '@/lib/webpush'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -13,6 +14,28 @@ const schema = z.object({
     'CANCELADO',
   ]),
 })
+
+/** Mensagem enviada ao CLIENTE (PWA da loja) quando a etapa muda. */
+function mensagemEtapa(etapa: string, retirada: boolean): { title: string; body: string } | null {
+  switch (etapa) {
+    case 'CONFIRMADO':
+      return { title: 'Pedido confirmado!', body: 'O vendedor confirmou o seu pedido.' }
+    case 'EM_PREPARO':
+      return { title: 'Pedido em separação', body: 'Seu pedido está sendo preparado com carinho.' }
+    case 'SAIU_PARA_ENTREGA':
+      return retirada
+        ? { title: 'Pedido pronto!', body: 'Seu pedido está pronto para retirada.' }
+        : { title: 'Saiu para entrega!', body: 'Seu pedido está a caminho.' }
+    case 'ENTREGUE':
+      return retirada
+        ? { title: 'Pedido concluído', body: 'Obrigado pela preferência!' }
+        : { title: 'Pedido entregue', body: 'Aproveite! Obrigado pela preferência.' }
+    case 'CANCELADO':
+      return { title: 'Pedido cancelado', body: 'Fale com o vendedor se tiver alguma dúvida.' }
+    default:
+      return null
+  }
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -39,6 +62,10 @@ export async function PATCH(
       where: { id: idNum },
       data:  { etapa: parsed.data.etapa },
     })
+
+    // Notifica o cliente (PWA) sem segurar a resposta do dashboard/app.
+    const msg = mensagemEtapa(pedido.etapa, pedido.endereco.startsWith('Retirada'))
+    if (msg) after(() => notificarPedidoWeb(pedido.idRastreio, msg))
 
     return NextResponse.json(pedido)
   } catch (err) {

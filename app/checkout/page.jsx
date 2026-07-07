@@ -159,6 +159,19 @@ export default function CheckoutPage() {
   // Apenas informativo — o servidor recalcula e é a fonte de verdade.
   const serviceFee          = isPixInstant ? calcularTaxaPix(total, pixCfg) : 0;
 
+  /* Animação "recalculando" no resumo quando o PIX instantâneo é (des)ativado —
+     dá visibilidade à taxa de serviço antes de o cliente fechar o pedido. */
+  const [feeRecalc, setFeeRecalc] = useState(false);
+  const feeRecalcTimer = useRef(null);
+  const firstFeeRender = useRef(true);
+  useEffect(() => {
+    if (firstFeeRender.current) { firstFeeRender.current = false; return; }
+    setFeeRecalc(true);
+    clearTimeout(feeRecalcTimer.current);
+    feeRecalcTimer.current = setTimeout(() => setFeeRecalc(false), 900);
+    return () => clearTimeout(feeRecalcTimer.current);
+  }, [isPixInstant]);
+
   const goTo = (n) => { setStep(n); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
   /* ── Validation ── */
@@ -225,6 +238,19 @@ export default function CheckoutPage() {
       }
     }
     goTo(step + 1);
+  };
+
+  /* ── Enter avança a etapa (desktop) ──
+     Em qualquer input/select do formulário, Enter tenta avançar — a validação
+     da etapa continua valendo. Botões/links ficam de fora (Enter neles já
+     dispara o clique nativo). */
+  const onStepKeyDown = (e) => {
+    if (e.key !== 'Enter' || loading) return;
+    const tag = e.target.tagName;
+    if (tag !== 'INPUT' && tag !== 'SELECT') return;
+    e.preventDefault();
+    if (step === 4) finishOrder();
+    else nextStep();
   };
 
   const applyAddress = (addr) => {
@@ -353,6 +379,8 @@ export default function CheckoutPage() {
       // desconto E a taxa de serviço do PIX a partir do banco (anti-tampering).
       const finalTotal = +((total * (1 + instFee)) + serviceFee).toFixed(2);
 
+      // Na retirada não há endereço de entrega — enviar `undefined` (o campo
+      // some do JSON). `null` explícito era rejeitado pelo schema da API.
       const enderecoEstruturado = delivery.type === 'entrega' ? {
         street:       delivery.street,
         number:       delivery.number,
@@ -362,7 +390,7 @@ export default function CheckoutPage() {
         state:        delivery.state,
         cep:          delivery.cep.replace(/\D/g,''),
         referencia:   delivery.referencia || '',
-      } : null;
+      } : undefined;
 
       const result = await reserveOrder({
         customer,
@@ -465,7 +493,7 @@ export default function CheckoutPage() {
       <main className={styles.main}>
         <div className={styles.grid}>
 
-          <div className={styles.form}>
+          <div className={styles.form} onKeyDown={onStepKeyDown}>
 
             {/* ─── STEP 1 ─── */}
             {step === 1 && (
@@ -692,7 +720,11 @@ export default function CheckoutPage() {
                       <div style={{ display:'flex', gap:'.75rem' }}>
                         <input className="form-input" placeholder="00000-000" inputMode="numeric"
                           value={delivery.cep}
-                          onChange={e => setDelivery(d => ({ ...d, cep: applyCEPMask(e.target.value) }))}/>
+                          onChange={e => setDelivery(d => ({ ...d, cep: applyCEPMask(e.target.value) }))}
+                          onKeyDown={e => {
+                            // Enter no CEP busca o endereço (não pula a etapa)
+                            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); doSearchCEP(); }
+                          }}/>
                         <button className={styles.inlineBtn} onClick={doSearchCEP}>Buscar CEP</button>
                       </div>
                       {E('cep')}
@@ -857,7 +889,7 @@ export default function CheckoutPage() {
                           ? `Confirma na hora • taxa de serviço R$ ${serviceFee.toFixed(2)} — seu pedido sai mais rápido`
                           : 'Confirma na hora — seu pedido sai mais rápido' },
                       { on:false, title:'Pagar na retirada/entrega',
-                        sub:'PIX na hora do recebimento — sem taxa' },
+                        sub:'PIX na hora do recebimento' },
                     ].map(opt => (
                       <button key={String(opt.on)} type="button"
                         onClick={() => setPayment(p => ({ ...p, online: opt.on }))}
@@ -880,7 +912,11 @@ export default function CheckoutPage() {
                     <span>
                       {isPixInstant
                         ? 'Após confirmar, você verá o QR Code e o Copia e Cola para pagar na hora. A confirmação é automática.'
-                        : <>Você pagará via PIX na retirada/entrega.{pixKey && <> Chave PIX: <strong style={{ userSelect:'all' }}>{pixKey}</strong></>}</>}
+                        : pixOnlineDisponivel
+                          // PIX na hora do recebimento: a chave só é apresentada
+                          // pelo vendedor no ato — não expor a chave cadastrada.
+                          ? 'Você pagará via PIX no momento da retirada/entrega, direto com o vendedor.'
+                          : <>Você pagará via PIX na retirada/entrega.{pixKey && <> Chave PIX: <strong style={{ userSelect:'all' }}>{pixKey}</strong></>}</>}
                     </span>
                   </div>
                 )}
@@ -942,6 +978,8 @@ export default function CheckoutPage() {
             installmentFee={installmentFee}
             serviceFee={serviceFee}
             serviceFeeActive={isPixInstant}
+            serviceFeeRecalc={feeRecalc}
+            serviceFeeInfo={dynamicConfig?.pixTaxaFrase || ''}
             onCouponApplied={(c) => {
               setCoupon(c);
               if (c.type === 'fretegratis') setDelivery(d => ({ ...d, shippingCost: 0 }));
@@ -968,6 +1006,7 @@ export default function CheckoutPage() {
           pickupDate={delivery.pickupDate}
           pickupTime={delivery.pickupTime}
           pix={successData.pix}
+          pixOnlineAtivo={pixOnlineDisponivel}
           onClose={() => setSuccessData(null)}
         />
       )}
