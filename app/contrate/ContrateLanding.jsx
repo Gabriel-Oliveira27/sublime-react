@@ -144,7 +144,7 @@ export default function ContrateLanding() {
 
   return (
     <>
-      <Header backHref="/" backLabel="← Loja" showSearch={false} showCart={false} />
+      <Header backHref="/" backLabel="Loja" showSearch={false} showCart={false} />
 
       <main className={styles.page}>
 
@@ -284,7 +284,7 @@ export default function ContrateLanding() {
 
         {/* ── Missão / Visão / Valores ── */}
         <section className={styles.sectionAlt}>
-          <h2 className={styles.sectionTitle}>No que acreditamos</h2>
+          <h2 className={styles.sectionTitle}>O que acreditamos</h2>
           <div className={styles.mvv}>
             <div className={styles.mvvCard}>
               <h3>Missão</h3>

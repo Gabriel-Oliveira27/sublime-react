@@ -99,6 +99,7 @@ export default function StorePage() {
   const [modalGroup,  setModalGroup]    = useState(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadClicks,   setLoadClicks]   = useState(0);
+  const [showTopBtn,   setShowTopBtn]   = useState(false);
   const { sidebarOpen, closeSidebar }   = useCart();
   const { showToast }                   = useToast();
   const { descontoGlobal, descontoLinhas } = useConfig();
@@ -126,6 +127,14 @@ export default function StorePage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Botão "voltar ao topo" — aparece depois de rolar a altura de uma tela.
+  useEffect(() => {
+    const onScroll = () => setShowTopBtn(window.scrollY > window.innerHeight);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const handleFilters = useCallback((filters) => {
     lastFiltersRef.current = { ...lastFiltersRef.current, ...filters };
@@ -269,6 +278,17 @@ export default function StorePage() {
       {modalGroup  && (
         <VariationsModal    group={modalGroup}  onClose={() => setModalGroup(null)} />
       )}
+
+      <button
+        className={`${styles.topBtn} ${showTopBtn ? styles.topBtnVisible : ''}`}
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        aria-label="Voltar ao topo"
+        tabIndex={showTopBtn ? 0 : -1}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="18 15 12 9 6 15"/>
+        </svg>
+      </button>
 
       <Footer />
     </>

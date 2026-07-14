@@ -25,7 +25,7 @@ export default function SobreContent() {
 
   return (
     <>
-      <Header backHref="/" backLabel="← Loja" showSearch={false} showCart={false} />
+      <Header backHref="/" backLabel="Loja" showSearch={false} showCart={false} />
 
       <main className={styles.page}>
 

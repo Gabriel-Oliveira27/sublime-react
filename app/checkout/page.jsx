@@ -479,7 +479,7 @@ export default function CheckoutPage() {
   return (
     <>
       <Header
-        backLabel="← Voltar para a loja"
+        backLabel="Loja"
         showSearch={false}
         showCart={false}
         onBackClick={() => setShowExitConfirm(true)}

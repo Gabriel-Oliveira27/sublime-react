@@ -97,6 +97,42 @@
   box-shadow: 0 6px 20px rgba(232,77,130,.45);
 }
 
+/* Botão flutuante "voltar ao topo" — útil depois de carregar muitos produtos */
+.topBtn {
+  position: fixed;
+  bottom: var(--sp-6);
+  right: var(--sp-6);
+  width: 48px; height: 48px;
+  border-radius: var(--r-full);
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  z-index: 300;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: all var(--t-base) var(--ease-out);
+}
+.topBtnVisible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.topBtn:hover {
+  background: var(--rose-blush);
+  border-color: var(--rose);
+  color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+@media (max-width: 768px) {
+  .topBtn { bottom: var(--sp-4); right: var(--sp-4); width: 44px; height: 44px; }
+}
+
 .emptyState, .errorState {
   text-align: center;
   padding: var(--sp-16) var(--sp-4);

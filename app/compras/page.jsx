@@ -183,7 +183,7 @@ export default function ComprasPage() {
 
   return (
     <>
-      <Header backHref="/" backLabel="← Voltar" showSearch={false} showCart={false}/>
+      <Header backHref="/" backLabel="Loja" showSearch={false} showCart={false}/>
 
       <section className={styles.hero}>
         <PackageSearchIcon size={48} color="white"/>

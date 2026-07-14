@@ -12,20 +12,29 @@ O Turnstile foi escolhido por ser **gratuito, sem limite de requisições,
 invisível para a grande maioria dos usuários** (sem "selecione as faixas de
 pedestre") e compatível com LGPD (não usa cookies de rastreamento).
 
-## Como ativar
+## Como ativar (painel em português)
 
-1. Crie uma conta gratuita em <https://dash.cloudflare.com/> e abra
-   **Turnstile** no menu lateral.
-2. **Add widget** → informe o(s) domínio(s) da loja (ex.:
-   `sublime-react.vercel.app` e o domínio próprio). Modo: **Managed**
-   (recomendado).
-3. Copie as duas chaves geradas e configure as variáveis de ambiente
-   (na Vercel: *Settings → Environment Variables*):
+> **Importante:** o Turnstile fica no nível da **conta**, não dentro de um
+> domínio/site. Se você entrar em um site específico no painel, a opção NÃO
+> aparece no menu — volte para a página inicial da conta.
 
-   | Variável | Onde vive | Valor |
+1. Acesse o link direto (leva à seção certa em qualquer idioma):
+   **<https://dash.cloudflare.com/?to=/:account/turnstile>**
+   — ou, no painel: página inicial da conta → menu lateral → **Turnstile**
+   (o nome do produto não é traduzido).
+2. Clique em **Adicionar widget** e preencha:
+   - **Nome do widget:** ex. `loja-sublime`;
+   - **Hostnames/domínios:** os domínios da loja (ex.
+     `sublime-react.vercel.app` e o domínio próprio) — sem `https://`;
+   - **Modo do widget:** **Gerenciado** (recomendado — só mostra desafio a
+     tráfego suspeito).
+3. Ao criar, o painel exibe duas chaves. Configure-as como variáveis de
+   ambiente (na Vercel: *Settings → Environment Variables*):
+
+   | Variável | Onde vive | Chave do painel |
    |---|---|---|
-   | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | pública (embutida no bundle) | Site Key |
-   | `TURNSTILE_SECRET_KEY` | somente servidor | Secret Key |
+   | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | pública (embutida no bundle) | **Chave do site** (Site Key) |
+   | `TURNSTILE_SECRET_KEY` | somente servidor | **Chave secreta** (Secret Key) |
 
 4. Faça um novo deploy (a chave pública entra no build).
 
@@ -47,7 +56,9 @@ pedestre") e compatível com LGPD (não usa cookies de rastreamento).
 
 ## Teste
 
-Chaves de teste oficiais da Cloudflare (funcionam em `localhost`):
+Chaves de teste oficiais da Cloudflare (funcionam em `localhost`). O widget de
+teste exibe o aviso **"Somente para teste. Se visto, informar ao proprietário
+do site"** — isso é esperado e some com as chaves reais:
 
 - Site key (sempre passa, invisível): `1x00000000000000000000AA`
 - Site key (força desafio interativo): `3x00000000000000000000FF`
