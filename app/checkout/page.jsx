@@ -13,6 +13,7 @@ import {
 } from '@/components/icons/Icons';
 import { useCart } from '@/context/CartContext';
 import { useConfig } from '@/context/ConfigContext';
+import TurnstileWidget, { captchaAtivo } from '@/components/security/TurnstileWidget';
 import LocationMapModal from '@/components/store/LocationMapModal';
 import { useToast } from '@/context/ToastContext';
 import { CONFIG } from '@/lib/config';
@@ -86,6 +87,8 @@ export default function CheckoutPage() {
   };
   const [coupon,          setCoupon]          = useState(INITIAL_COUPON);
   const [changeFor,       setChangeFor]       = useState('');
+  const [captchaToken,    setCaptchaToken]    = useState(null);
+  const captchaRef                            = useRef(null);
   const [locationDetected, setLocationDetected] = useState(false);
   const [locating,         setLocating]         = useState(false);
   const [showMapModal,     setShowMapModal]     = useState(false);
@@ -348,6 +351,10 @@ export default function CheckoutPage() {
   /* ── Submit ── */
   const finishOrder = async () => {
     if (!validate()) return;
+    if (captchaAtivo() && !captchaToken) {
+      showToast('Complete a verificação de segurança para finalizar', 'error');
+      return;
+    }
     setLoading(true); setLoadTxt('Reservando seus produtos…');
     try {
       const itemsPayload = items.map(i => ({
@@ -403,9 +410,10 @@ export default function CheckoutPage() {
           changeFor:    payment.method === 'Dinheiro' ? parseCurrency(changeFor) : '',
           online:       isPixInstant,
         },
-        coupon:   coupon.code || '',
-        subtotal: +subtotal.toFixed(2),
-        total:    finalTotal,
+        coupon:       coupon.code || '',
+        subtotal:     +subtotal.toFixed(2),
+        total:        finalTotal,
+        captchaToken: captchaToken || undefined,
       });
 
       if (result.success) {
@@ -423,6 +431,8 @@ export default function CheckoutPage() {
       showToast(err.message || 'Erro ao processar pedido', 'error');
     } finally {
       setLoading(false);
+      // Tokens do captcha são de uso único — renova para nova tentativa.
+      captchaRef.current?.reset();
     }
   };
 
@@ -989,6 +999,12 @@ export default function CheckoutPage() {
                     </div>
                   </>
                 )}
+
+                <TurnstileWidget
+                  ref={captchaRef}
+                  onToken={setCaptchaToken}
+                  className={styles.captcha}
+                />
 
                 <div className={styles.actions}>
                   <button className="btn btn-secondary" onClick={() => goTo(3)}>← Voltar</button>

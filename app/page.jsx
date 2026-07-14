@@ -13,6 +13,11 @@ import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import styles from './page.module.css';
 
+// Quantos cards renderizar por "página". A grade começa com PAGE_SIZE e o
+// botão "Carregar mais" libera o restante em lotes — evita montar 100+ cards
+// (e disparar 100+ requisições de imagem) de uma vez no primeiro paint.
+const PAGE_SIZE = 20;
+
 function groupProducts(products) {
   const map = {};
   products.forEach(p => {
@@ -69,6 +74,7 @@ export default function StorePage() {
   const [error,       setError]         = useState(null);
   const [menuOpen,    setMenuOpen]      = useState(false);
   const [modalGroup,  setModalGroup]    = useState(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { sidebarOpen, closeSidebar }   = useCart();
   const { showToast }                   = useToast();
   // Guarda os últimos filtros aplicados para que a busca do header e a barra
@@ -84,6 +90,7 @@ export default function StorePage() {
       const g = groupProducts(stock);
       setGrouped(g);
       setFiltered(g);
+      setVisibleCount(PAGE_SIZE);
     } catch (err) {
       setError(err.message);
       showToast('Erro ao carregar produtos.', 'error');
@@ -97,6 +104,9 @@ export default function StorePage() {
   const handleFilters = useCallback((filters) => {
     lastFiltersRef.current = { ...lastFiltersRef.current, ...filters };
     setFiltered(applyFiltersToGroups(grouped, lastFiltersRef.current));
+    // Filtro novo = resultado novo — volta para a primeira "página" para o
+    // usuário não cair no meio de uma lista antiga.
+    setVisibleCount(PAGE_SIZE);
   }, [grouped]);
 
   // Busca do header: mescla só o termo, preservando linha/capacidade/preço.
@@ -114,6 +124,9 @@ export default function StorePage() {
       return !isNaN(p) && p >= 0.01;
     })
   );
+
+  const visibleGroups = validGroups.slice(0, visibleCount);
+  const remaining     = validGroups.length - visibleGroups.length;
 
   const closeAll = () => { setMenuOpen(false); closeSidebar(); };
 
@@ -166,15 +179,34 @@ export default function StorePage() {
           )}
 
           {!loading && !error && validGroups.length > 0 && (
-            <div className={styles.grid}>
-              {validGroups.map((group, i) => (
-                <ProductCard
-                  key={`${group.descricao}-${i}`}
-                  group={group}
-                  onOpenVariations={setModalGroup}
-                />
-              ))}
-            </div>
+            <>
+              <div className={styles.grid}>
+                {visibleGroups.map((group, i) => (
+                  <ProductCard
+                    key={`${group.descricao}-${i}`}
+                    group={group}
+                    onOpenVariations={setModalGroup}
+                  />
+                ))}
+              </div>
+
+              {remaining > 0 && (
+                <div className={styles.loadMoreWrap}>
+                  <span className={styles.loadMoreInfo}>
+                    Mostrando {visibleGroups.length} de {validGroups.length} produtos
+                  </span>
+                  <button
+                    className={styles.loadMoreBtn}
+                    onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+                  >
+                    Carregar mais produtos
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 

@@ -45,11 +45,13 @@ export default function Footer() {
         <div className={styles.section}>
           <h3>Sobre</h3>
           <p>A Sublime oferece produtos Tupperware de alta qualidade para facilitar seu dia a dia.</p>
+          <Link href="/sobre">Conheça a loja</Link>
         </div>
         <div className={styles.section}>
           <h3>Links Úteis</h3>
           <Link href="/compras">Rastrear seu pedido</Link>
           <a href={waLink} target="_blank" rel="noreferrer">Suporte via WhatsApp</a>
+          <Link href="/contrate">Contrate já: sua loja como esta</Link>
         </div>
       </div>
       <div className={styles.bottom}>

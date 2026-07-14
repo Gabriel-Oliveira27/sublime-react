@@ -33,6 +33,40 @@
   gap: var(--sp-5);
 }
 
+.loadMoreWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-8);
+}
+.loadMoreInfo {
+  color: var(--text-muted);
+  font-size: .82rem;
+  font-weight: 500;
+}
+.loadMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-8);
+  height: 46px;
+  border-radius: var(--r-full);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: .9rem;
+  transition: all var(--t-base) var(--ease-out);
+}
+.loadMoreBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--rose-blush);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
 .emptyState, .errorState {
   text-align: center;
   padding: var(--sp-16) var(--sp-4);

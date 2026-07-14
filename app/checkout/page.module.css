@@ -35,6 +35,14 @@
   padding-top: 2rem;
   border-top: 2px solid var(--border);
 }
+
+/* Widget do captcha (Turnstile) antes do botão de finalizar */
+.captcha {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+.captcha:empty { display: none; }
 /* `.btn` vem do globals.css — precisa de :global() para casar dentro de um
    CSS Module (sem isso o seletor é localizado e a regra morre em silêncio,
    deixando o .finishBtn com flex-basis 0 e altura colapsada no mobile). */

@@ -226,6 +226,58 @@ export function CopyIcon({ size = 24, className }) {
   );
 }
 
+export function SmartphoneIcon({ size = 24, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <rect x="5" y="2" width="14" height="20" rx="2"/>
+      <line x1="12" y1="18" x2="12.01" y2="18"/>
+    </svg>
+  );
+}
+
+export function BarChartIcon({ size = 24, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <line x1="12" y1="20" x2="12" y2="10"/>
+      <line x1="18" y1="20" x2="18" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="16"/>
+    </svg>
+  );
+}
+
+export function PercentIcon({ size = 24, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <line x1="19" y1="5" x2="5" y2="19"/>
+      <circle cx="6.5" cy="6.5" r="2.5"/>
+      <circle cx="17.5" cy="17.5" r="2.5"/>
+    </svg>
+  );
+}
+
+export function PaletteIcon({ size = 24, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <path d="M12 22a10 10 0 110-20 10 9 0 0110 9 5 5 0 01-5 5h-2.25a1.75 1.75 0 00-1.4 2.8l.3.4a1.75 1.75 0 01-1.4 2.8z"/>
+      <circle cx="13.5" cy="6.5" r=".5"/>
+      <circle cx="17.5" cy="10.5" r=".5"/>
+      <circle cx="8.5" cy="7.5" r=".5"/>
+      <circle cx="6.5" cy="12.5" r=".5"/>
+    </svg>
+  );
+}
+
+export function StoreIcon({ size = 24, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <path d="M3 9l1.5-5h15L21 9"/>
+      <path d="M3 9a3 3 0 006 0 3 3 0 006 0 3 3 0 006 0"/>
+      <path d="M4 12v8a1 1 0 001 1h14a1 1 0 001-1v-8"/>
+      <path d="M9 21v-6h6v6"/>
+    </svg>
+  );
+}
+
 export function WhatsAppIcon({ size = 24, className }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>

@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation';
 import { CONFIG } from '@/lib/config';
 import { useInstallPrompt } from '@/components/pwa/useInstallPrompt';
-import { WhatsAppIcon, PackageIcon, DownloadIcon } from '@/components/icons/Icons';
+import { WhatsAppIcon, PackageIcon, DownloadIcon, InfoIcon, StoreIcon } from '@/components/icons/Icons';
 import styles from './SideMenu.module.css';
 
 export default function SideMenu({ open, onClose }) {
@@ -33,6 +33,14 @@ export default function SideMenu({ open, onClose }) {
       <div className={styles.item} onClick={() => go('/compras')}>
         <PackageIcon size={22}/>
         <span>Rastrear pedido</span>
+      </div>
+      <div className={styles.item} onClick={() => go('/sobre')}>
+        <InfoIcon size={22}/>
+        <span>Sobre a loja</span>
+      </div>
+      <div className={styles.item} onClick={() => go('/contrate')}>
+        <StoreIcon size={22}/>
+        <span>Contrate: loja como esta</span>
       </div>
       {/* Só aparece quando o navegador oferece a instalação (não instalado ainda) */}
       {canInstall && (
