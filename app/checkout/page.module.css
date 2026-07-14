@@ -43,6 +43,9 @@
   margin-top: 1.5rem;
 }
 .captcha:empty { display: none; }
+@media (max-width: 768px) {
+  .captcha { justify-content: center; }
+}
 /* `.btn` vem do globals.css — precisa de :global() para casar dentro de um
    CSS Module (sem isso o seletor é localizado e a regra morre em silêncio,
    deixando o .finishBtn com flex-basis 0 e altura colapsada no mobile). */

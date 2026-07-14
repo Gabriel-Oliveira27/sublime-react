@@ -66,6 +66,36 @@
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
+.loadAllAsk {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+.loadMoreChoices {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.loadAllBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-8);
+  height: 46px;
+  border-radius: var(--r-full);
+  border: none;
+  background: linear-gradient(135deg, var(--rose) 0%, var(--rose-light) 100%);
+  color: white;
+  font-weight: 600;
+  font-size: .9rem;
+  box-shadow: 0 2px 12px rgba(232,77,130,.35);
+  transition: all var(--t-base) var(--ease-out);
+}
+.loadAllBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(232,77,130,.45);
+}
 
 .emptyState, .errorState {
   text-align: center;

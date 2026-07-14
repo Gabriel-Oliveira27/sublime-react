@@ -164,6 +164,11 @@
   background: var(--surface);
   box-shadow: var(--shadow-md);
 }
+/* No desktop o "Mais popular" ganha leve escala para ancorar o olhar */
+@media (min-width: 900px) {
+  .planFeatured { transform: scale(1.03); }
+  .planFeatured:hover { transform: scale(1.03) translateY(-4px); }
+}
 .planTag {
   position: absolute;
   top: -13px;

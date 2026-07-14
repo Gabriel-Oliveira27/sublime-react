@@ -9,8 +9,16 @@ export default function FilterSidebar({ products, onFiltersChange }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    setLinhas([...new Set(products.map(p => p.linha).filter(Boolean))]);
-    setLitrosList([...new Set(products.map(p => p.Litros).filter(Boolean))]);
+    setLinhas(
+      [...new Set(products.map(p => p.linha).filter(Boolean))]
+        .sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'))
+    );
+    // Capacidades em ordem numérica ("600ml" ficaria errado, mas o catálogo
+    // usa litros de forma consistente: 1.5L, 2.4L, 10L…)
+    setLitrosList(
+      [...new Set(products.map(p => p.Litros).filter(Boolean))]
+        .sort((a, b) => (parseFloat(a) || 0) - (parseFloat(b) || 0))
+    );
   }, [products]);
 
   useEffect(() => {
