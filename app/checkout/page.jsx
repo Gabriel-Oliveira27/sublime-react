@@ -88,6 +88,7 @@ export default function CheckoutPage() {
   const [coupon,          setCoupon]          = useState(INITIAL_COUPON);
   const [changeFor,       setChangeFor]       = useState('');
   const [captchaToken,    setCaptchaToken]    = useState(null);
+  const [summaryOpen,     setSummaryOpen]     = useState(false);
   const captchaRef                            = useRef(null);
   const [locationDetected, setLocationDetected] = useState(false);
   const [locating,         setLocating]         = useState(false);
@@ -175,7 +176,10 @@ export default function CheckoutPage() {
     return () => clearTimeout(feeRecalcTimer.current);
   }, [isPixInstant]);
 
-  const goTo = (n) => { setStep(n); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const goTo = (n) => { setStep(n); setSummaryOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+  /* Total exibido na barra mobile — mesmo cálculo do resumo (juros + taxa PIX) */
+  const displayTotal = +(total * (1 + installmentFee) + (isPixInstant ? serviceFee : 0)).toFixed(2);
 
   /* ── Validation ── */
   const validate = () => {
@@ -487,41 +491,18 @@ export default function CheckoutPage() {
 
       {/* ── Modal confirmação de saída ───────────────────────────── */}
       {showExitConfirm && (
-        <div style={{
-          position:'fixed',inset:0,zIndex:9999,
-          background:'rgba(26,18,24,.55)',backdropFilter:'blur(4px)',
-          display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'
-        }}>
-          <div style={{
-            background:'var(--surface)',borderRadius:'var(--r-xl)',
-            padding:'2rem',maxWidth:'360px',width:'100%',
-            boxShadow:'0 20px 60px rgba(26,18,24,.25)',
-            border:'1px solid var(--border)',textAlign:'center'
-          }}>
-            <div style={{display:'flex',justifyContent:'center',marginBottom:'1rem',color:'var(--accent)'}}>
+        <div className={styles.exitOverlay}>
+          <div className={styles.exitModal}>
+            <div className={styles.exitIcon}>
               <ShoppingCartIcon size={40} />
             </div>
-            <h3 style={{marginBottom:'.5rem',color:'var(--text-primary)'}}>Sair do checkout?</h3>
-            <p style={{color:'var(--text-secondary)',fontSize:'.9rem',marginBottom:'1.5rem',lineHeight:1.5}}>
-              Seu carrinho será mantido, mas o progresso desta etapa será perdido.
-            </p>
-            <div style={{display:'flex',gap:'.75rem',justifyContent:'center'}}>
-              <button
-                onClick={() => setShowExitConfirm(false)}
-                style={{
-                  padding:'.6rem 1.25rem',borderRadius:'var(--r-md)',
-                  border:'1.5px solid var(--border)',background:'var(--surface-muted)',
-                  color:'var(--text-primary)',fontWeight:600,cursor:'pointer',fontSize:'.9rem'
-                }}>
+            <h3>Sair do checkout?</h3>
+            <p>Seu carrinho será mantido, mas o progresso desta etapa será perdido.</p>
+            <div className={styles.exitActions}>
+              <button className="btn btn-secondary" onClick={() => setShowExitConfirm(false)}>
                 Continuar comprando
               </button>
-              <button
-                onClick={() => router.push('/')}
-                style={{
-                  padding:'.6rem 1.25rem',borderRadius:'var(--r-md)',
-                  border:'none',background:'var(--accent)',
-                  color:'white',fontWeight:600,cursor:'pointer',fontSize:'.9rem'
-                }}>
+              <button className="btn btn-primary" onClick={() => router.push('/')}>
                 Sair
               </button>
             </div>
@@ -575,14 +556,15 @@ export default function CheckoutPage() {
                     { key: 'retirada', Icon: MapPinIcon, title: 'Retirada', sub: 'Buscar no local — grátis', enabled: retiradaOn },
                     { key: 'entrega',  Icon: TruckIcon,  title: 'Entrega',  sub: 'Receber em casa',          enabled: entregaOn },
                   ].filter(o => o.enabled).map(({ key, Icon, title, sub }) => (
-                    <div key={key}
+                    <button key={key} type="button"
                       className={`${styles.delivOpt} ${delivery.type === key ? styles.selected : ''}`}
+                      aria-pressed={delivery.type === key}
                       onClick={() => setDelivery(d => ({ ...d, type: key, shippingCost: key === 'retirada' ? 0 : d.shippingCost }))}
                     >
                       <Icon size={28} className={styles.delivOptIcon}/>
-                      <h3>{title}</h3>
-                      <p>{sub}</p>
-                    </div>
+                      <span className={styles.optTitle}>{title}</span>
+                      <span className={styles.optSub}>{sub}</span>
+                    </button>
                   ))}
                 </div>
 
@@ -631,81 +613,51 @@ export default function CheckoutPage() {
 
                     {/* ── Picker de endereços salvos ── */}
                     {savedAddresses.length > 0 && !pickerDismissed && !locationDetected && (
-                      <div style={{
-                        marginBottom:'1.25rem', padding:'1rem',
-                        background:'var(--surface-muted)', borderRadius:'var(--r-lg)',
-                        border:'1.5px solid var(--border)',
-                      }}>
-                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'.75rem' }}>
-                          <p style={{ margin:0, fontWeight:700, fontSize:'.9rem' }}>Usar um endereço anterior?</p>
-                          <button
-                            onClick={() => setPickerDismissed(true)}
-                            style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:'1.1rem', lineHeight:1 }}
-                            aria-label="Fechar"
-                          ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                      <div className={styles.savedBox}>
+                        <div className={styles.savedHead}>
+                          <p>Usar um endereço anterior?</p>
+                          <button type="button" className={styles.savedClose}
+                            onClick={() => setPickerDismissed(true)} aria-label="Fechar">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </button>
                         </div>
-                        <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
+                        <div className={styles.savedList}>
                           {savedAddresses.map((addr, i) => (
-                            <button key={i} onClick={() => applyAddress(addr)} style={{
-                              textAlign:'left', padding:'.75rem 1rem',
-                              background:'var(--surface)', border:'1.5px solid var(--border)',
-                              borderRadius:'var(--r-md)', cursor:'pointer',
-                              transition:'border-color var(--t-base)',
-                              fontFamily:"'DM Sans', sans-serif",
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.borderColor='var(--accent)'}
-                            onMouseLeave={e => e.currentTarget.style.borderColor='var(--border)'}
-                            >
-                              <p style={{ margin:0, fontWeight:600, fontSize:'.88rem' }}>
+                            <button key={i} type="button" className={styles.savedItem} onClick={() => applyAddress(addr)}>
+                              <span className={styles.savedItemLine1}>
                                 {addr.street}{addr.number ? `, ${addr.number}` : ''}{addr.complement ? ` – ${addr.complement}` : ''}
-                              </p>
-                              <p style={{ margin:'2px 0 0', fontSize:'.8rem', color:'var(--text-secondary)' }}>
+                              </span>
+                              <span className={styles.savedItemLine2}>
                                 {addr.neighborhood && `${addr.neighborhood}, `}{addr.city}/{addr.state}
                                 {addr.referencia && ` — ${addr.referencia}`}
-                              </p>
+                              </span>
                             </button>
                           ))}
                         </div>
-                        <button
-                          onClick={() => setPickerDismissed(true)}
-                          style={{
-                            marginTop:'.75rem', width:'100%', padding:'.5rem',
-                            background:'none', border:'1px dashed var(--border)',
-                            borderRadius:'var(--r-sm)', cursor:'pointer',
-                            fontSize:'.82rem', color:'var(--text-secondary)',
-                            fontFamily:"'DM Sans', sans-serif",
-                          }}
-                        >
+                        <button type="button" className={styles.savedNewBtn} onClick={() => setPickerDismissed(true)}>
                           + Digitar novo endereço
                         </button>
                       </div>
                     )}
 
-                    {/* ── Botão de detecção de localização ── */}
+                    {/* ── Detecção de localização ──
+                        Com endereços salvos na tela, o convite do GPS encolhe
+                        para uma linha — evita dois blocões empilhados. */}
                     {!locationDetected ? (
-                      <div style={{
-                        display:'flex', flexDirection:'column', alignItems:'center',
-                        gap:'.75rem', padding:'1.25rem', marginBottom:'1.25rem',
-                        background:'var(--surface-muted)', border:'2px dashed var(--border)',
-                        borderRadius:'var(--r-lg)',
-                      }}>
-                        <p style={{ margin:0, color:'var(--text-secondary)', fontSize:'.9rem', textAlign:'center' }}>
-                          Quer preencher o endereço automaticamente?
-                        </p>
-                        <button
-                          onClick={doDetectLocation}
-                          disabled={locating}
-                          style={{
-                            display:'flex', alignItems:'center', gap:'.6rem',
-                            height:'44px', padding:'0 1.5rem',
-                            background: locating ? 'var(--surface-muted)' : 'var(--accent)',
-                            color: locating ? 'var(--text-secondary)' : 'white',
-                            border: locating ? '1.5px solid var(--border)' : 'none',
-                            borderRadius:'var(--r-md)', fontWeight:700, fontSize:'.9rem',
-                            cursor: locating ? 'not-allowed' : 'pointer',
-                            transition:'all var(--t-base)', fontFamily:"'DM Sans', sans-serif",
-                          }}
-                        >
+                      savedAddresses.length > 0 && !pickerDismissed ? (
+                        <div className={styles.gpsCompact}>
+                          <button type="button" onClick={doDetectLocation} disabled={locating}>
+                            {locating ? 'Detectando…' : 'ou usar minha localização'}
+                          </button>
+                          <span>·</span>
+                          <button type="button" onClick={() => setShowMapModal(true)}>
+                            escolher no mapa
+                          </button>
+                        </div>
+                      ) : (
+                      <div className={styles.gpsBox}>
+                        <p className={styles.gpsText}>Quer preencher o endereço automaticamente?</p>
+                        <button type="button" className={styles.gpsBtn} onClick={doDetectLocation} disabled={locating}>
                           {locating ? (
                             <>
                               <span className="spinner spinner-sm" style={{ borderTopColor:'var(--accent)', borderColor:'rgba(0,0,0,.1)' }}/>
@@ -721,40 +673,23 @@ export default function CheckoutPage() {
                             </>
                           )}
                         </button>
-                        <span style={{ fontSize:'.78rem', color:'var(--text-muted)' }}>
+                        <span className={styles.gpsNote}>
                           Usa o GPS do seu dispositivo — gratuito e sem compartilhar seus dados
                         </span>
-                        <button
-                          onClick={() => setShowMapModal(true)}
-                          style={{ background:'none', border:'none', cursor:'pointer', color:'var(--accent)', fontSize:'.8rem', fontWeight:600, fontFamily:"'DM Sans', sans-serif", padding:0 }}
-                        >
+                        <button type="button" className={styles.gpsMapLink} onClick={() => setShowMapModal(true)}>
                           Prefiro escolher no mapa
                         </button>
                       </div>
+                      )
                     ) : (
-                      <div style={{
-                        display:'flex', alignItems:'center', gap:'.75rem',
-                        padding:'1rem', marginBottom:'1.25rem',
-                        background:'rgba(45,158,107,.08)', border:'1.5px solid var(--success)',
-                        borderRadius:'var(--r-md)',
-                      }}>
-                        <CheckCircleIcon size={20} style={{ color:'var(--success)', flexShrink:0 }}/>
-                        <div style={{ flex:1 }}>
-                          <p style={{ margin:0, fontWeight:600, fontSize:'.9rem', color:'var(--success)' }}>
-                            Localização detectada!
-                          </p>
-                          <p style={{ margin:'2px 0 0', fontSize:'.82rem', color:'var(--text-secondary)' }}>
-                            Confira os campos abaixo e corrija o que precisar.
-                          </p>
+                      <div className={styles.locBanner}>
+                        <CheckCircleIcon size={20} className={styles.locBannerIcon}/>
+                        <div className={styles.locBannerText}>
+                          <p className={styles.locBannerTitle}>Localização detectada!</p>
+                          <p className={styles.locBannerSub}>Confira os campos abaixo e corrija o que precisar.</p>
                         </div>
-                        <button
+                        <button type="button" className={styles.locClearBtn}
                           onClick={() => { setLocationDetected(false); setDelivery(d => ({ ...d, street:'', number:'', neighborhood:'', city:'', state:'', cep:'', lat:null, lon:null, shippingCost:null })); }}
-                          style={{
-                            padding:'.3rem .7rem', fontSize:'.78rem', fontWeight:600,
-                            background:'transparent', border:'1px solid var(--success)',
-                            borderRadius:'var(--r-sm)', color:'var(--success)', cursor:'pointer',
-                            flexShrink:0,
-                          }}
                         >
                           Limpar
                         </button>
@@ -763,7 +698,7 @@ export default function CheckoutPage() {
 
                     <div className="form-group">
                       <label>CEP *</label>
-                      <div style={{ display:'flex', gap:'.75rem' }}>
+                      <div className={styles.cepRow}>
                         <input className="form-input" placeholder="00000-000" inputMode="numeric"
                           value={delivery.cep}
                           onChange={e => setDelivery(d => ({ ...d, cep: applyCEPMask(e.target.value) }))}
@@ -916,19 +851,20 @@ export default function CheckoutPage() {
                     { key:'Dinheiro', Icon: BanknoteIcon,   title:'Dinheiro',         sub:'Pagar na entrega/retirada', enabled: paymentConfig.dinheiro  },
                     { key:'Credito',  Icon: CreditCardIcon, title:'Cartão de Crédito',sub:'Parcelamento disponível',   enabled: paymentConfig.credito   },
                   ].filter(m => m.enabled).map(({ key, Icon, title, sub }) => (
-                    <div key={key}
+                    <button key={key} type="button"
                       className={`${styles.payMethod} ${payment.method === key ? styles.selected : ''}`}
-                    onClick={() => handleSelectPayment(key)}
+                      aria-pressed={payment.method === key}
+                      onClick={() => handleSelectPayment(key)}
                     >
                       <div className={styles.payIcon}><Icon size={key === 'PIX' ? 36 : 28}/></div>
-                      <h3>{title}</h3>
-                      <p>{sub}</p>
-                    </div>
+                      <span className={styles.optTitle}>{title}</span>
+                      <span className={styles.optSub}>{sub}</span>
+                    </button>
                   ))}
                 </div>
 
                 {payment.method === 'PIX' && pixOnlineDisponivel && (
-                  <div style={{ display:'flex', flexDirection:'column', gap:'.6rem', marginTop:'1rem' }}>
+                  <div className={styles.pixOptions}>
                     {[
                       { on:true,  title:'Pagar agora (instantâneo)',
                         sub: serviceFee > 0
@@ -938,15 +874,11 @@ export default function CheckoutPage() {
                         sub:'PIX na hora do recebimento' },
                     ].map(opt => (
                       <button key={String(opt.on)} type="button"
-                        onClick={() => setPayment(p => ({ ...p, online: opt.on }))}
-                        style={{
-                          textAlign:'left', padding:'.85rem 1rem', borderRadius:'var(--r-md)', cursor:'pointer',
-                          border: payment.online === opt.on ? '2px solid var(--accent)' : '1.5px solid var(--border)',
-                          background: payment.online === opt.on ? 'var(--surface-muted)' : 'var(--surface)',
-                          fontFamily:"'DM Sans', sans-serif",
-                        }}>
-                        <div style={{ fontWeight:700, fontSize:'.92rem', color:'var(--text-primary)' }}>{opt.title}</div>
-                        <div style={{ fontSize:'.8rem', color:'var(--text-secondary)', marginTop:2 }}>{opt.sub}</div>
+                        className={`${styles.pixOpt} ${payment.online === opt.on ? styles.pixOptActive : ''}`}
+                        aria-pressed={payment.online === opt.on}
+                        onClick={() => setPayment(p => ({ ...p, online: opt.on }))}>
+                        <span className={styles.pixOptTitle}>{opt.title}</span>
+                        <span className={styles.pixOptSub}>{opt.sub}</span>
                       </button>
                     ))}
                   </div>
@@ -977,6 +909,21 @@ export default function CheckoutPage() {
                       <label>Troco para quanto? <span className={styles.labelNote}>(opcional)</span></label>
                       <input className="form-input" type="text" inputMode="decimal" placeholder="Ex: 100,00"
                         value={changeFor} onChange={e => setChangeFor(e.target.value.replace(/[^\d.,]/g,''))}/>
+                      {(() => {
+                        // Feedback imediato do troco — o mesmo cálculo é refeito no servidor
+                        const dado = parseCurrency(changeFor);
+                        if (dado > total) return (
+                          <p className={styles.trocoHint}>
+                            Você receberá <strong>R$ {(dado - total).toFixed(2)}</strong> de troco
+                          </p>
+                        );
+                        if (dado > 0 && dado < total) return (
+                          <p className={styles.trocoWarn}>
+                            Valor menor que o total do pedido (R$ {total.toFixed(2)})
+                          </p>
+                        );
+                        return null;
+                      })()}
                     </div>
                   </>
                 )}
@@ -1011,7 +958,8 @@ export default function CheckoutPage() {
                   <button className={`btn btn-primary ${styles.finishBtn}`} onClick={finishOrder} disabled={loading}>
                     {loading
                       ? <><span className="spinner spinner-sm" style={{ borderTopColor:'white', borderColor:'rgba(255,255,255,.3)' }}/>&nbsp;Processando…</>
-                      : 'Reservar Pedido'}
+                      // PIX instantâneo leva ao QR Code — o rótulo alinha a expectativa
+                      : isPixInstant ? 'Pagar agora com PIX' : 'Reservar Pedido'}
                   </button>
                 </div>
               </div>
@@ -1019,27 +967,59 @@ export default function CheckoutPage() {
 
           </div>{/* /.form */}
 
-          <OrderSummary
-            cart={items}
-            subtotal={subtotal}
-            shipping={shipping}
-            discount={discount}
-            total={total}
-            paymentMethod={payment.method}
-            installments={payment.installments}
-            installmentFee={installmentFee}
-            serviceFee={serviceFee}
-            serviceFeeActive={isPixInstant}
-            serviceFeeRecalc={feeRecalc}
-            serviceFeeInfo={dynamicConfig?.pixTaxaFrase || ''}
-            onCouponApplied={(c) => {
-              setCoupon(c);
-              if (c.type === 'fretegratis') setDelivery(d => ({ ...d, shippingCost: 0 }));
-            }}
-          />
+          {/* No desktop é a coluna direita fixa; no mobile vira um bottom
+              sheet aberto pela barra de total (ver .summaryWrap no CSS). */}
+          <div className={`${styles.summaryWrap} ${summaryOpen ? styles.summaryWrapOpen : ''}`}>
+            <OrderSummary
+              cart={items}
+              subtotal={subtotal}
+              shipping={shipping}
+              discount={discount}
+              total={total}
+              paymentMethod={payment.method}
+              installments={payment.installments}
+              installmentFee={installmentFee}
+              serviceFee={serviceFee}
+              serviceFeeActive={isPixInstant}
+              serviceFeeRecalc={feeRecalc}
+              serviceFeeInfo={dynamicConfig?.pixTaxaFrase || ''}
+              onCouponApplied={(c) => {
+                setCoupon(c);
+                if (c.type === 'fretegratis') setDelivery(d => ({ ...d, shippingCost: 0 }));
+              }}
+            />
+          </div>
 
         </div>
       </main>
+
+      {/* Barra de total no mobile — o cliente vê o total em qualquer etapa
+          e toca para expandir o resumo completo (itens, frete, cupom). */}
+      {!successData && (
+        <>
+          {summaryOpen && <div className={styles.summaryOverlay} onClick={() => setSummaryOpen(false)} />}
+          <button
+            type="button"
+            className={styles.summaryBar}
+            onClick={() => setSummaryOpen(o => !o)}
+            aria-expanded={summaryOpen}
+          >
+            <span className={styles.summaryBarInfo}>
+              <span className={styles.summaryBarLabel}>
+                {summaryOpen ? 'Fechar resumo' : 'Ver resumo do pedido'}
+              </span>
+              <span className={styles.summaryBarTotal}>R$ {displayTotal.toFixed(2)}</span>
+            </span>
+            <svg
+              className={`${styles.summaryBarChevron} ${summaryOpen ? styles.summaryBarChevronOpen : ''}`}
+              width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <polyline points="18 15 12 9 6 15"/>
+            </svg>
+          </button>
+        </>
+      )}
 
       <Footer />
 
