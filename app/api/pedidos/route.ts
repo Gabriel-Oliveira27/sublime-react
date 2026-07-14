@@ -9,6 +9,7 @@ import { PedidoBodySchema } from '@/lib/schemas'
 import { logError } from '@/lib/logger'
 import { CONFIG } from '@/lib/config'
 import { lerPixConfig, calcularTaxaPix, getPixProvider, pixModoMock } from '@/lib/pix'
+import { turnstileEnabled, verifyTurnstile } from '@/lib/turnstile'
 
 export async function GET(req: NextRequest) {
   const auth = await autenticar(req)
@@ -62,6 +63,24 @@ export async function POST(req: NextRequest) {
     // `total`/`subtotal` enviados pelo cliente são intencionalmente ignorados:
     // o servidor recalcula tudo a partir do banco (ver transação abaixo).
     const { customer, items, delivery, payment, coupon, enderecoEstruturado } = body
+
+    // Captcha (Turnstile) — só quando configurado no ambiente. Bloqueia
+    // criação de pedidos por bots/spam ANTES de tocar em estoque/banco.
+    // Sessão staff autenticada (dashboard/app) dispensa o captcha: pedidos
+    // manuais do vendedor não passam pelo widget da loja.
+    if (turnstileEnabled()) {
+      const captcha = await verifyTurnstile(body.captchaToken, ip)
+      if (!captcha.ok) {
+        const auth = await autenticar(req)
+        if (auth instanceof NextResponse) {
+          console.warn('[pedidos] captcha recusado:', captcha.motivo, 'ip:', ip)
+          return NextResponse.json(
+            { erro: 'Falha na verificação de segurança. Atualize a página e tente novamente.' },
+            { status: 403 }
+          )
+        }
+      }
+    }
 
     if (!customer?.name || !items?.length || !delivery?.type || !payment?.method) {
       return NextResponse.json({ erro: 'Dados obrigatórios ausentes' }, { status: 400 })

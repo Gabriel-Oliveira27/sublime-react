@@ -39,7 +39,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const item = await prisma.estoque.create({ data: parsed.data })
+    // Normaliza a capacidade na entrada: "0;350L" (typo de digitação) →
+    // "0.350L". O filtro da loja compara capacidades por igualdade exata,
+    // então valores inconsistentes viram opções duplicadas no select.
+    const data = {
+      ...parsed.data,
+      litros: parsed.data.litros.replace(/;/g, '.').trim(),
+    }
+
+    const item = await prisma.estoque.create({ data })
     return NextResponse.json(item, { status: 201 })
   } catch (err) {
     console.error('[POST /api/estoque]', err)

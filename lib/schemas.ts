@@ -54,6 +54,9 @@ export const PedidoBodySchema = z.object({
 
   coupon:              z.string().nullable().optional(),
   total:               z.number().nonnegative(),
+  // Token do Cloudflare Turnstile (anti-bot). Opcional no schema — a
+  // obrigatoriedade é decidida no servidor conforme TURNSTILE_SECRET_KEY.
+  captchaToken:        z.string().max(2048).nullable().optional(),
   // O checkout envia `null` na retirada (sem endereço de entrega) — sem o
   // .nullable() o Zod rejeitava o pedido inteiro com "Dados inválidos".
   enderecoEstruturado: z.record(z.string(), z.unknown()).nullable().optional(),

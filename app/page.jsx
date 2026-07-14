@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchProducts } from '@/lib/api';
+import { applyDiscount } from '@/lib/utils';
+import { useConfig } from '@/context/ConfigContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import SideMenu from '@/components/layout/SideMenu';
@@ -12,6 +14,11 @@ import CartSidebar from '@/components/cart/CartSidebar';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import styles from './page.module.css';
+
+// Quantos cards renderizar por "página". A grade começa com PAGE_SIZE e o
+// botão "Carregar mais" libera o restante em lotes — evita montar 100+ cards
+// (e disparar 100+ requisições de imagem) de uma vez no primeiro paint.
+const PAGE_SIZE = 20;
 
 function groupProducts(products) {
   const map = {};
@@ -43,21 +50,42 @@ function norm(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-function applyFiltersToGroups(groups, filters) {
+function applyFiltersToGroups(groups, filters, descontos) {
+  const descGlobal = descontos?.global ?? 0;
+  const descLinhas = descontos?.linhas ?? {};
+  const term       = norm(filters.search).trim();
+  const min        = parseFloat(filters.priceMin);
+  const max        = parseFloat(filters.priceMax);
+  const temMin     = !isNaN(min);
+  const temMax     = !isNaN(max);
+
   return groups.filter(g => {
-    const okLinha  = !filters.linha  || norm(g.linha).includes(norm(filters.linha));
-    const okLitros = !filters.litros || norm(g.litros).includes(norm(filters.litros));
-    const term     = norm(filters.search);
+    // Linha e capacidade vêm de selects com valores exatos do banco —
+    // igualdade estrita. Substring casava "1L" com "11L" e afins.
+    const okLinha  = !filters.linha  ||
+      norm(g.linha) === norm(filters.linha) ||
+      g.variations.some(v => norm(v.linha) === norm(filters.linha));
+    const okLitros = !filters.litros || norm(g.litros) === norm(filters.litros);
+
     const okSearch = !term ||
       norm(g.descricao).includes(term) ||
+      norm(g.litros).includes(term) ||
       g.variations.some(v =>
         norm(v.cores).includes(term)   ||
         norm(v.filtros).includes(term) ||
         norm(v.linha).includes(term)
       );
-    const okMin = !filters.priceMin || g.minPrice >= parseFloat(filters.priceMin);
-    const okMax = !filters.priceMax || g.maxPrice <= parseFloat(filters.priceMax);
-    return okLinha && okLitros && okSearch && okMin && okMax;
+
+    // Preço: o grupo entra se ALGUMA variação cair na faixa, usando o preço
+    // COM desconto (o mesmo que o card exibe). Antes o grupo inteiro sumia
+    // quando só parte das variações estava na faixa, e o desconto era ignorado.
+    const okPreco = (!temMin && !temMax) || g.variations.some(v => {
+      const pct   = descLinhas[g.linha] > 0 ? descLinhas[g.linha] : descGlobal;
+      const preco = applyDiscount(v.valor, pct).finalPrice;
+      return preco > 0 && (!temMin || preco >= min) && (!temMax || preco <= max);
+    });
+
+    return okLinha && okLitros && okSearch && okPreco;
   });
 }
 
@@ -69,8 +97,12 @@ export default function StorePage() {
   const [error,       setError]         = useState(null);
   const [menuOpen,    setMenuOpen]      = useState(false);
   const [modalGroup,  setModalGroup]    = useState(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [loadClicks,   setLoadClicks]   = useState(0);
+  const [showTopBtn,   setShowTopBtn]   = useState(false);
   const { sidebarOpen, closeSidebar }   = useCart();
   const { showToast }                   = useToast();
+  const { descontoGlobal, descontoLinhas } = useConfig();
   // Guarda os últimos filtros aplicados para que a busca do header e a barra
   // lateral não descartem os filtros um do outro.
   const lastFiltersRef                  = useRef({ linha: '', litros: '', search: '', priceMin: '', priceMax: '' });
@@ -84,6 +116,8 @@ export default function StorePage() {
       const g = groupProducts(stock);
       setGrouped(g);
       setFiltered(g);
+      setVisibleCount(PAGE_SIZE);
+      setLoadClicks(0);
     } catch (err) {
       setError(err.message);
       showToast('Erro ao carregar produtos.', 'error');
@@ -94,10 +128,25 @@ export default function StorePage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Botão "voltar ao topo" — aparece depois de rolar a altura de uma tela.
+  useEffect(() => {
+    const onScroll = () => setShowTopBtn(window.scrollY > window.innerHeight);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const handleFilters = useCallback((filters) => {
     lastFiltersRef.current = { ...lastFiltersRef.current, ...filters };
-    setFiltered(applyFiltersToGroups(grouped, lastFiltersRef.current));
-  }, [grouped]);
+    setFiltered(applyFiltersToGroups(grouped, lastFiltersRef.current, {
+      global: descontoGlobal,
+      linhas: descontoLinhas,
+    }));
+    // Filtro novo = resultado novo — volta para a primeira "página" para o
+    // usuário não cair no meio de uma lista antiga.
+    setVisibleCount(PAGE_SIZE);
+    setLoadClicks(0);
+  }, [grouped, descontoGlobal, descontoLinhas]);
 
   // Busca do header: mescla só o termo, preservando linha/capacidade/preço.
   useEffect(() => {
@@ -114,6 +163,9 @@ export default function StorePage() {
       return !isNaN(p) && p >= 0.01;
     })
   );
+
+  const visibleGroups = validGroups.slice(0, visibleCount);
+  const remaining     = validGroups.length - visibleGroups.length;
 
   const closeAll = () => { setMenuOpen(false); closeSidebar(); };
 
@@ -166,15 +218,56 @@ export default function StorePage() {
           )}
 
           {!loading && !error && validGroups.length > 0 && (
-            <div className={styles.grid}>
-              {validGroups.map((group, i) => (
-                <ProductCard
-                  key={`${group.descricao}-${i}`}
-                  group={group}
-                  onOpenVariations={setModalGroup}
-                />
-              ))}
-            </div>
+            <>
+              <div className={styles.grid}>
+                {visibleGroups.map((group, i) => (
+                  <ProductCard
+                    key={`${group.descricao}-${i}`}
+                    group={group}
+                    onOpenVariations={setModalGroup}
+                  />
+                ))}
+              </div>
+
+              {remaining > 0 && (
+                <div className={styles.loadMoreWrap}>
+                  <span className={styles.loadMoreInfo}>
+                    Mostrando {visibleGroups.length} de {validGroups.length} produtos
+                  </span>
+
+                  {loadClicks < 1 ? (
+                    <button
+                      className={styles.loadMoreBtn}
+                      onClick={() => { setVisibleCount(c => c + PAGE_SIZE); setLoadClicks(c => c + 1); }}
+                    >
+                      Carregar mais produtos
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="6 9 12 15 18 9"/>
+                      </svg>
+                    </button>
+                  ) : (
+                    /* A partir do 2º clique, pergunta se quer tudo de uma vez */
+                    <>
+                      <span className={styles.loadAllAsk}>Carregar todos?</span>
+                      <div className={styles.loadMoreChoices}>
+                        <button
+                          className={styles.loadAllBtn}
+                          onClick={() => setVisibleCount(validGroups.length)}
+                        >
+                          Sim, ver todos ({validGroups.length})
+                        </button>
+                        <button
+                          className={styles.loadMoreBtn}
+                          onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+                        >
+                          Só mais {Math.min(PAGE_SIZE, remaining)}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -185,6 +278,17 @@ export default function StorePage() {
       {modalGroup  && (
         <VariationsModal    group={modalGroup}  onClose={() => setModalGroup(null)} />
       )}
+
+      <button
+        className={`${styles.topBtn} ${showTopBtn ? styles.topBtnVisible : ''}`}
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        aria-label="Voltar ao topo"
+        tabIndex={showTopBtn ? 0 : -1}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="18 15 12 9 6 15"/>
+        </svg>
+      </button>
 
       <Footer />
     </>

@@ -1,9 +1,10 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import PackageSearchIcon from '@/components/icons/PackageSearchIcon';
 import { SearchIcon } from '@/components/icons/Icons';
+import TurnstileWidget, { captchaAtivo } from '@/components/security/TurnstileWidget';
 import { useToast } from '@/context/ToastContext';
 import { checkOrder } from '@/lib/api';
 import { applyCPFMask, applyPhoneMask } from '@/lib/utils';
@@ -97,6 +98,8 @@ export default function ComprasPage() {
   const [phone,    setPhone]    = useState('');
   const [uiState,  setUiState]  = useState('empty');
   const [orders,   setOrders]   = useState([]);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const captchaRef = useRef(null);
 
   const mode = detectMode(input);
   const showPhoneField = mode === 'cpf' && input.length >= 3;
@@ -129,19 +132,25 @@ export default function ComprasPage() {
       return;
     }
 
+    if (captchaAtivo() && !captchaToken) {
+      showToast('Complete a verificação de segurança para buscar', 'error');
+      return;
+    }
+
     setUiState('loading');
     try {
       let found;
 
       if (vdOk) {
-        const res = await checkOrder(val);
+        const res = await checkOrder(val, captchaToken);
         found = res.order ? normaliseOrders([res.order]) : [];
       } else {
         // Busca por CPF com validação de telefone no backend
         const cpfClean   = val.replace(/\D/g, '');
         const phoneClean = phone.replace(/\D/g, '');
         const res = await fetch(
-          `/api/pedidos/rastrear?cpf=${cpfClean}&phone=${phoneClean}`
+          `/api/pedidos/rastrear?cpf=${cpfClean}&phone=${phoneClean}`,
+          { headers: captchaToken ? { 'X-Captcha-Token': captchaToken } : {} }
         );
         if (res.status === 401 || res.status === 403) {
           const data = await res.json();
@@ -164,14 +173,17 @@ export default function ComprasPage() {
     } catch (err) {
       setUiState('no-results');
       showToast(err.message || 'Erro ao buscar pedidos', 'error');
+    } finally {
+      // Tokens do captcha são de uso único — renova para a próxima busca.
+      captchaRef.current?.reset();
     }
-  }, [input, phone, showToast]);
+  }, [input, phone, captchaToken, showToast]);
 
   const clear = () => { setInput(''); setPhone(''); setUiState('empty'); setOrders([]); };
 
   return (
     <>
-      <Header backHref="/" backLabel="← Voltar" showSearch={false} showCart={false}/>
+      <Header backHref="/" backLabel="Loja" showSearch={false} showCart={false}/>
 
       <section className={styles.hero}>
         <PackageSearchIcon size={48} color="white"/>
@@ -216,6 +228,7 @@ export default function ComprasPage() {
               Buscar
             </button>
           </div>
+          <TurnstileWidget ref={captchaRef} onToken={setCaptchaToken} className={styles.captcha}/>
           <button className={styles.btnClear} onClick={clear}>Limpar</button>
         </div>
       </div>

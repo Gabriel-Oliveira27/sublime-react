@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit } from '@/app/api/auth/login/ratelimit'
+import { turnstileEnabled, verifyTurnstile } from '@/lib/turnstile'
 
 // Projeção mínima devolvida ao público. NUNCA inclui nome, contato (telefone),
 // endereço ou CPF — só o necessário para a tela de acompanhamento montar a
@@ -23,6 +24,20 @@ export async function GET(req: NextRequest) {
       { erro: 'Muitas consultas. Tente novamente em alguns instantes.' },
       { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } }
     )
+  }
+
+  // Captcha (Turnstile) — só quando configurado no ambiente. O token vem no
+  // header (não na URL, para não vazar em logs de acesso). Junto com o rate
+  // limit acima, corta varredura automatizada de VDs/CPFs por bots.
+  if (turnstileEnabled()) {
+    const captcha = await verifyTurnstile(req.headers.get('x-captcha-token'), ip)
+    if (!captcha.ok) {
+      console.warn('[rastrear] captcha recusado:', captcha.motivo, 'ip:', ip)
+      return NextResponse.json(
+        { erro: 'Falha na verificação de segurança. Atualize a página e tente novamente.' },
+        { status: 403 }
+      )
+    }
   }
 
   const { searchParams } = new URL(req.url)
@@ -89,7 +104,7 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin':  '*',
       'Access-Control-Allow-Methods': 'GET,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Captcha-Token',
     },
   })
 }

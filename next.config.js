@@ -14,13 +14,15 @@
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' vercel.live *.vercel-scripts.com",
+  // challenges.cloudflare.com: script + iframe do captcha Turnstile
+  // (rastreio e checkout). Ver CAPTCHA-SETUP.md.
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' vercel.live *.vercel-scripts.com https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com",
   "img-src 'self' data: blob: https://res.cloudinary.com https://*.cloudinary.com https://*.openstreetmap.org",
   "font-src 'self' data: cdnjs.cloudflare.com",
   "connect-src 'self' https://sublime-react.vercel.app https://viacep.com.br https://nominatim.openstreetmap.org https://api.cloudinary.com cdnjs.cloudflare.com",
   "frame-ancestors 'none'",
-  "frame-src 'none'",
+  "frame-src https://challenges.cloudflare.com",
   "base-uri 'self'",
   "form-action 'self'",
   // 'self' permite registrar o service worker do PWA (/sw.js); blob: cobre

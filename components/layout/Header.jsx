@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
+import { ArrowLeftIcon } from '@/components/icons/Icons';
 import styles from './Header.module.css';
 
 export default function Header({
@@ -13,13 +14,18 @@ export default function Header({
 }) {
   const { totalItems, toggleSidebar } = useCart();
 
+  // Aceita rótulos antigos com "←" embutido — a seta agora é um ícone SVG.
+  const label = (backLabel || 'Voltar').replace(/^←\s*/, '');
+
   const backButton = onBackClick ? (
     <button className={styles.backBtn} onClick={onBackClick}>
-      {backLabel || '← Voltar'}
+      <ArrowLeftIcon size={16} className={styles.backIcon} />
+      <span>{label}</span>
     </button>
   ) : backHref ? (
     <Link href={backHref} className={styles.backBtn}>
-      {backLabel || '← Voltar'}
+      <ArrowLeftIcon size={16} className={styles.backIcon} />
+      <span>{label}</span>
     </Link>
   ) : null;
 

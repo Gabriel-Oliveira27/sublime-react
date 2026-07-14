@@ -1,0 +1,168 @@
+/* Página "Sobre" — usa os tokens do design system da loja */
+
+.page { min-height: 60vh; }
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.hero {
+  background:
+    radial-gradient(ellipse at 15% 0%, rgba(232,77,130,.14), transparent 55%),
+    radial-gradient(ellipse at 90% 100%, rgba(184,158,232,.16), transparent 55%),
+    var(--cream);
+  border-bottom: 1px solid var(--border);
+  padding: var(--sp-16) var(--sp-6);
+  text-align: center;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: .35rem .9rem;
+  border-radius: var(--r-full);
+  background: var(--rose-pale);
+  color: var(--rose);
+  font-size: .8rem;
+  font-weight: 600;
+  margin-bottom: var(--sp-5);
+}
+.hero h1 {
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  color: var(--text-primary);
+  margin-bottom: var(--sp-4);
+}
+.hero p {
+  color: var(--text-secondary);
+  font-size: 1.02rem;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+/* ── Seções ───────────────────────────────────────────────── */
+.section    { padding: var(--sp-16) var(--sp-6); max-width: 1060px; margin: 0 auto; }
+.sectionAlt {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: var(--sp-16) var(--sp-6);
+}
+.centerTitle {
+  text-align: center;
+  font-size: clamp(1.5rem, 3.5vw, 2rem);
+  color: var(--text-primary);
+  margin-bottom: var(--sp-10);
+}
+
+/* ── Quem somos ───────────────────────────────────────────── */
+.cols {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: var(--sp-10);
+  align-items: start;
+}
+.colText h2 {
+  font-size: clamp(1.5rem, 3.5vw, 2rem);
+  color: var(--text-primary);
+  margin-bottom: var(--sp-4);
+}
+.colText p {
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-4);
+  line-height: 1.7;
+}
+.pillars {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+}
+.pillars li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  color: var(--text-primary);
+  font-size: .92rem;
+  font-weight: 500;
+}
+.pillars svg { color: var(--success); flex-shrink: 0; margin-top: 2px; }
+
+/* ── Como funciona ────────────────────────────────────────── */
+.grid {
+  max-width: 1060px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--sp-5);
+}
+.card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  transition: transform var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out);
+}
+.card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.cardIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px; height: 46px;
+  border-radius: var(--r-md);
+  background: var(--rose-pale);
+  color: var(--rose);
+  margin-bottom: var(--sp-4);
+}
+.card h3 { font-size: 1.05rem; margin-bottom: var(--sp-2); color: var(--text-primary); }
+.card p  { color: var(--text-secondary); font-size: .88rem; }
+
+/* ── Contato ──────────────────────────────────────────────── */
+.contactBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: var(--sp-8);
+  box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
+}
+.contactInfo h2 {
+  font-size: 1.4rem;
+  color: var(--text-primary);
+  margin-bottom: var(--sp-3);
+}
+.address {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  color: var(--text-secondary);
+  font-size: .95rem;
+  max-width: 480px;
+}
+.address svg { color: var(--rose); flex-shrink: 0; margin-top: 3px; }
+.addressNote {
+  color: var(--text-muted);
+  font-size: .82rem;
+  margin-top: var(--sp-2);
+}
+.contactActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+/* ── Responsivo ───────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .cols { grid-template-columns: 1fr; gap: var(--sp-6); }
+}
+@media (max-width: 768px) {
+  .hero { padding: var(--sp-12) var(--sp-4); }
+  .section, .sectionAlt { padding: var(--sp-10) var(--sp-4); }
+  .contactBox { flex-direction: column; align-items: stretch; text-align: left; }
+  .contactActions { flex-direction: row; flex-wrap: wrap; }
+  .contactActions :global(.btn) { flex: 1; }
+}

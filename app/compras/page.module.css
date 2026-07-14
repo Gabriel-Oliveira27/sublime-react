@@ -81,6 +81,14 @@
   white-space: nowrap;
 }
 .btnSearch:hover { background: var(--lavender); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(232,77,130,.4); }
+/* Widget do captcha (Turnstile) — ocupa a linha inteira dentro do form */
+.captcha {
+  flex-basis: 100%;
+  display: flex;
+  justify-content: center;
+}
+.captcha:empty { display: none; }
+
 .btnClear {
   padding: .875rem 1.5rem;
   border-radius: var(--r-md);

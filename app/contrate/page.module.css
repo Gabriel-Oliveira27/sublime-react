@@ -1,0 +1,399 @@
+/* Landing "Contrate já" — usa os tokens do design system da loja */
+
+.page {
+  min-height: 60vh;
+}
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.hero {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(232,77,130,.14), transparent 55%),
+    radial-gradient(ellipse at 85% 100%, rgba(184,158,232,.18), transparent 55%),
+    var(--cream);
+  border-bottom: 1px solid var(--border);
+  padding: var(--sp-20) var(--sp-6);
+  text-align: center;
+}
+.heroInner { max-width: 760px; margin: 0 auto; }
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: .35rem .9rem;
+  border-radius: var(--r-full);
+  background: var(--rose-pale);
+  color: var(--rose);
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  margin-bottom: var(--sp-5);
+}
+.hero h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  color: var(--text-primary);
+  margin-bottom: var(--sp-4);
+}
+.hero p {
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  max-width: 620px;
+  margin: 0 auto var(--sp-8);
+}
+.heroActions {
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.btnGhost { background: transparent; }
+
+/* ── Prova de valor ───────────────────────────────────────── */
+.proof {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: var(--sp-8) var(--sp-6);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--sp-4);
+}
+.proofItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-5);
+  color: var(--rose);
+}
+.proofItem svg { flex-shrink: 0; margin-top: 2px; }
+.proofItem div { display: flex; flex-direction: column; gap: 2px; }
+.proofItem strong { color: var(--text-primary); font-size: .95rem; }
+.proofItem span   { color: var(--text-secondary); font-size: .82rem; line-height: 1.45; }
+
+/* ── Seções ───────────────────────────────────────────────── */
+.section, .sectionAlt {
+  padding: var(--sp-16) var(--sp-6);
+}
+.sectionAlt {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.sectionTitle {
+  text-align: center;
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  color: var(--text-primary);
+  margin-bottom: var(--sp-3);
+}
+.sectionSub {
+  text-align: center;
+  color: var(--text-secondary);
+  max-width: 560px;
+  margin: 0 auto var(--sp-10);
+}
+
+/* ── Como funciona ────────────────────────────────────────── */
+.steps {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--sp-5);
+}
+.step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  text-align: center;
+}
+.stepNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--rose), var(--lavender));
+  color: white;
+  font-weight: 700;
+  font-size: 1.15rem;
+  margin-bottom: var(--sp-4);
+}
+.step h3 { font-size: 1.15rem; margin-bottom: var(--sp-2); color: var(--text-primary); }
+.step p  { color: var(--text-secondary); font-size: .9rem; }
+
+/* ── Planos ───────────────────────────────────────────────── */
+.launchNote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  max-width: 640px;
+  margin: 0 auto var(--sp-8);
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--r-md);
+  background: var(--lavender-pale);
+  color: var(--text-primary);
+  font-size: .88rem;
+  text-align: center;
+}
+.launchNote svg { color: var(--lavender); flex-shrink: 0; }
+
+.plans {
+  max-width: 1060px;
+  margin: 0 auto var(--sp-8);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--sp-5);
+  align-items: stretch;
+}
+.plan {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: var(--sp-8) var(--sp-6) var(--sp-6);
+  transition: transform var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out);
+}
+.plan:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.planFeatured {
+  border-color: var(--rose);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+/* No desktop o "Mais popular" ganha leve escala para ancorar o olhar */
+@media (min-width: 900px) {
+  .planFeatured { transform: scale(1.03); }
+  .planFeatured:hover { transform: scale(1.03) translateY(-4px); }
+}
+.planTag {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: .25rem .9rem;
+  border-radius: var(--r-full);
+  background: linear-gradient(135deg, var(--rose), var(--rose-light));
+  color: white;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+.plan h3 { font-size: 1.4rem; color: var(--text-primary); }
+.planPersona {
+  color: var(--text-secondary);
+  font-size: .85rem;
+  margin: var(--sp-2) 0 var(--sp-5);
+  min-height: 2.6em;
+}
+.planPrice { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
+.planDeploy {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 2.2rem;
+  color: var(--rose);
+  line-height: 1;
+}
+.planDeployLabel { color: var(--text-muted); font-size: .8rem; }
+.planMonthly {
+  margin-top: var(--sp-2);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: .95rem;
+}
+.planMonthly span { color: var(--text-muted); font-weight: 500; font-size: .85rem; }
+.planList {
+  list-style: none;
+  margin: var(--sp-5) 0 var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  flex: 1;
+}
+.planList li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  color: var(--text-secondary);
+  font-size: .88rem;
+}
+.planList svg { color: var(--success); flex-shrink: 0; margin-top: 3px; }
+.planBtn { width: 100%; }
+
+.plansFootnotes {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.plansFootnotes p {
+  color: var(--text-secondary);
+  font-size: .85rem;
+  line-height: 1.55;
+}
+.plansFootnotes strong { color: var(--text-primary); }
+
+/* ── Funcionalidades ──────────────────────────────────────── */
+.features {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--sp-5);
+}
+.feature {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  transition: transform var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out);
+}
+.feature:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.featureIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px; height: 46px;
+  border-radius: var(--r-md);
+  background: var(--rose-pale);
+  color: var(--rose);
+  margin-bottom: var(--sp-4);
+}
+.feature h3 { font-size: 1.05rem; margin-bottom: var(--sp-2); color: var(--text-primary); }
+.feature p  { color: var(--text-secondary); font-size: .88rem; }
+
+/* ── Missão / Visão / Valores ─────────────────────────────── */
+.mvv {
+  max-width: 1060px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--sp-5);
+}
+.mvvCard {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+}
+.mvvCard h3 {
+  color: var(--rose);
+  font-size: 1.2rem;
+  margin-bottom: var(--sp-3);
+}
+.mvvCard p { color: var(--text-secondary); font-size: .92rem; }
+.mvvCard ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.mvvCard li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  color: var(--text-secondary);
+  font-size: .88rem;
+}
+.mvvCard li svg { color: var(--success); flex-shrink: 0; margin-top: 3px; }
+.mvvCard li strong { color: var(--text-primary); }
+
+/* ── FAQ ──────────────────────────────────────────────────── */
+.faq {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.faqItem {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.faqItem summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: .95rem;
+  list-style: none;
+}
+.faqItem summary::-webkit-details-marker { display: none; }
+.faqItem summary svg { flex-shrink: 0; transition: transform var(--t-base) var(--ease-out); color: var(--text-muted); }
+.faqItem[open] summary svg { transform: rotate(180deg); }
+.faqItem p {
+  padding: 0 var(--sp-5) var(--sp-4);
+  color: var(--text-secondary);
+  font-size: .9rem;
+}
+
+/* ── Contato ──────────────────────────────────────────────── */
+.contact {
+  background:
+    radial-gradient(ellipse at 80% 0%, rgba(184,158,232,.16), transparent 55%),
+    var(--surface);
+  border-top: 1px solid var(--border);
+  padding: var(--sp-16) var(--sp-6) var(--sp-20);
+}
+.contactIntro {
+  text-align: center;
+  max-width: 560px;
+  margin: 0 auto var(--sp-10);
+}
+.contactIntro h2 {
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  color: var(--text-primary);
+  margin-bottom: var(--sp-3);
+}
+.contactIntro p { color: var(--text-secondary); }
+
+.form {
+  max-width: 640px;
+  margin: 0 auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: var(--sp-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  box-shadow: var(--shadow-md);
+}
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+/* O gap do .form já espaça os campos — zera o margin-bottom global do
+   .form-group para não somar os dois. */
+.form :global(.form-group) { margin-bottom: 0; }
+.form textarea { resize: vertical; min-height: 90px; }
+.formBtn { width: 100%; height: 50px; font-size: 1rem; }
+.formHint {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: .8rem;
+}
+
+/* ── Responsivo ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .hero { padding: var(--sp-12) var(--sp-4); }
+  .section, .sectionAlt, .contact { padding-left: var(--sp-4); padding-right: var(--sp-4); }
+  .proof { padding: var(--sp-6) var(--sp-4); grid-template-columns: 1fr 1fr; }
+  .formRow { grid-template-columns: 1fr; }
+  .form { padding: var(--sp-5); }
+}
+@media (max-width: 520px) {
+  .proof { grid-template-columns: 1fr; }
+  .heroActions .btnGhost { display: none; }
+}
