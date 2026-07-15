@@ -94,8 +94,10 @@
 }
 .delivOpt:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .delivOpt.selected { border-color: var(--accent); background: var(--rose-blush); box-shadow: 0 0 0 3px rgba(232,77,130,.2); }
-.delivOpt h3 { font-size: 1.1rem; color: var(--text-primary); margin-bottom: .25rem; font-family: 'DM Sans', sans-serif; font-weight: 600; }
-.delivOpt p  { font-size: .9rem; color: var(--text-secondary); }
+/* Título/subtítulo dos cards de opção (recebimento e pagamento) — os cards
+   são <button> para navegação por teclado, então usamos spans estilizados */
+.optTitle { display: block; font-size: 1.05rem; color: var(--text-primary); font-weight: 600; margin-bottom: .15rem; }
+.optSub   { display: block; font-size: .85rem; color: var(--text-secondary); }
 
 /* Payment methods */
 .payMethods {
@@ -116,9 +118,39 @@
 }
 .payMethod:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .payMethod.selected { border-color: var(--accent); background: var(--rose-blush); box-shadow: 0 0 0 3px rgba(232,77,130,.2); }
-.payMethod h3 { font-size: .95rem; color: var(--text-primary); font-family: 'DM Sans', sans-serif; font-weight: 600; }
-.payMethod p  { font-size: .8rem; color: var(--text-secondary); }
+.payMethod .optTitle { font-size: .95rem; margin-bottom: 0; }
+.payMethod .optSub   { font-size: .8rem; }
 .payIcon { color: var(--accent); }
+
+/* Opções do PIX (pagar agora × na entrega) */
+.pixOptions { display: flex; flex-direction: column; gap: .6rem; margin-top: 1rem; }
+.pixOpt {
+  text-align: left;
+  padding: .85rem 1rem;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all var(--t-base);
+  width: 100%;
+}
+.pixOpt:hover { border-color: var(--accent); }
+.pixOptActive { border: 2px solid var(--accent); background: var(--surface-muted); }
+.pixOptTitle { display: block; font-weight: 700; font-size: .92rem; color: var(--text-primary); }
+.pixOptSub   { display: block; font-size: .8rem; color: var(--text-secondary); margin-top: 2px; }
+
+/* Troco em tempo real (pagamento em dinheiro) */
+.trocoHint {
+  margin-top: .5rem;
+  font-size: .88rem;
+  color: var(--success);
+}
+.trocoHint strong { font-size: 1rem; }
+.trocoWarn {
+  margin-top: .5rem;
+  font-size: .85rem;
+  color: var(--warning);
+}
 
 /* Installment summary */
 .installSummary {
@@ -150,6 +182,133 @@
 .reviewItem:last-child { border-bottom: none; }
 .reviewRow { display: flex; justify-content: space-between; padding: .5rem 0; font-size: .9rem; color: var(--text-secondary); }
 .totalRow { font-size: 1.2rem; padding-top: .75rem; border-top: 2px solid var(--border); margin-top: .25rem; color: var(--accent); }
+
+/* ── Modal de saída do checkout ─────────────────────────── */
+.exitOverlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(26,18,24,.55);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.exitModal {
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  padding: 2rem;
+  max-width: 380px; width: 100%;
+  box-shadow: 0 20px 60px rgba(26,18,24,.25);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+.exitIcon { display: flex; justify-content: center; margin-bottom: 1rem; color: var(--accent); }
+.exitModal h3 { margin-bottom: .5rem; color: var(--text-primary); }
+.exitModal p  { color: var(--text-secondary); font-size: .9rem; margin-bottom: 1.5rem; line-height: 1.5; }
+.exitActions { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+
+/* ── Endereços salvos (por CPF) ─────────────────────────── */
+.savedBox {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: var(--surface-muted);
+  border-radius: var(--r-lg);
+  border: 1.5px solid var(--border);
+}
+.savedHead {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: .75rem;
+}
+.savedHead p { margin: 0; font-weight: 700; font-size: .9rem; color: var(--text-primary); }
+.savedClose { color: var(--text-muted); line-height: 1; padding: .2rem; }
+.savedClose:hover { color: var(--accent); }
+.savedList { display: flex; flex-direction: column; gap: .5rem; }
+.savedItem {
+  text-align: left;
+  padding: .75rem 1rem;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color var(--t-base);
+  width: 100%;
+}
+.savedItem:hover { border-color: var(--accent); }
+.savedItemLine1 { display: block; font-weight: 600; font-size: .88rem; color: var(--text-primary); }
+.savedItemLine2 { display: block; font-size: .8rem; color: var(--text-secondary); margin-top: 2px; }
+.savedNewBtn {
+  margin-top: .75rem; width: 100%; padding: .5rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-sm);
+  font-size: .82rem; color: var(--text-secondary);
+  transition: all var(--t-base);
+}
+.savedNewBtn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Detecção de localização (GPS) ──────────────────────── */
+.gpsBox {
+  display: flex; flex-direction: column; align-items: center;
+  gap: .75rem; padding: 1.25rem; margin-bottom: 1.25rem;
+  background: var(--surface-muted);
+  border: 2px dashed var(--border);
+  border-radius: var(--r-lg);
+}
+.gpsText { margin: 0; color: var(--text-secondary); font-size: .9rem; text-align: center; }
+.gpsBtn {
+  display: flex; align-items: center; gap: .6rem;
+  height: 44px; padding: 0 1.5rem;
+  background: var(--accent);
+  color: white;
+  border-radius: var(--r-md);
+  font-weight: 700; font-size: .9rem;
+  transition: all var(--t-base);
+}
+.gpsBtn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.gpsBtn:disabled { background: var(--surface-muted); color: var(--text-secondary); border: 1.5px solid var(--border); cursor: not-allowed; }
+.gpsNote { font-size: .78rem; color: var(--text-muted); }
+.gpsMapLink { color: var(--accent); font-size: .8rem; font-weight: 600; padding: 0; }
+.gpsMapLink:hover { text-decoration: underline; }
+
+/* Versão compacta — quando o picker de endereços salvos já está na tela */
+.gpsCompact {
+  display: flex; align-items: center; justify-content: center; gap: .6rem;
+  margin: -0.5rem 0 1.25rem;
+  font-size: .82rem; color: var(--text-muted);
+}
+.gpsCompact button {
+  color: var(--accent); font-size: .82rem; font-weight: 600; padding: .25rem 0;
+}
+.gpsCompact button:hover:not(:disabled) { text-decoration: underline; }
+.gpsCompact button:disabled { color: var(--text-muted); cursor: wait; }
+
+/* Banner "localização detectada" */
+.locBanner {
+  display: flex; align-items: center; gap: .75rem;
+  padding: 1rem; margin-bottom: 1.25rem;
+  background: rgba(45,158,107,.08);
+  border: 1.5px solid var(--success);
+  border-radius: var(--r-md);
+}
+.locBannerIcon { color: var(--success); flex-shrink: 0; }
+.locBannerText { flex: 1; }
+.locBannerTitle { margin: 0; font-weight: 600; font-size: .9rem; color: var(--success); }
+.locBannerSub   { margin: 2px 0 0; font-size: .82rem; color: var(--text-secondary); }
+.locClearBtn {
+  padding: .3rem .7rem; font-size: .78rem; font-weight: 600;
+  border: 1px solid var(--success);
+  border-radius: var(--r-sm);
+  color: var(--success);
+  flex-shrink: 0;
+  transition: all var(--t-base);
+}
+.locClearBtn:hover { background: var(--success); color: white; }
+
+/* Linha CEP + botão buscar */
+.cepRow { display: flex; gap: .75rem; }
+
+/* ── Resumo mobile: barra fixa + bottom sheet ───────────── */
+/* No desktop o wrapper precisa esticar na linha do grid (align-self) para o
+   sticky do resumo ter espaço para deslizar — o grid usa align-items:flex-start. */
+.summaryWrap { min-width: 0; align-self: stretch; }
+.summaryBar, .summaryOverlay { display: none; }
 
 /* Loading overlay */
 /* Info / warning boxes with icon */
@@ -231,6 +390,72 @@
 
 @media (max-width: 1024px) {
   .grid { grid-template-columns: 1fr; }
+
+  /* Espaço para a barra de total fixa não cobrir os botões das etapas */
+  .main { padding-bottom: 96px; }
+
+  /* Barra fixa de total — sempre visível durante as etapas */
+  .summaryBar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 350;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 64px;
+    padding: .6rem 1.25rem;
+    padding-bottom: calc(.6rem + env(safe-area-inset-bottom));
+    background: var(--surface);
+    border-top: 1.5px solid var(--border);
+    box-shadow: 0 -6px 24px rgba(26,18,24,.10);
+    text-align: left;
+  }
+  .summaryBarInfo  { display: flex; flex-direction: column; }
+  .summaryBarLabel { font-size: .75rem; color: var(--text-muted); font-weight: 600; }
+  .summaryBarTotal { font-size: 1.2rem; font-weight: 700; color: var(--accent); line-height: 1.2; }
+  .summaryBarChevron { color: var(--text-secondary); transition: transform var(--t-base) var(--ease-out); }
+  .summaryBarChevronOpen { transform: rotate(180deg); }
+
+  .summaryOverlay {
+    display: block;
+    position: fixed; inset: 0;
+    background: rgba(26,18,24,.45);
+    z-index: 340;
+  }
+
+  /* O resumo vira bottom sheet, aberto pela barra */
+  .summaryWrap {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    z-index: 345;
+    max-height: calc(80vh - 64px);
+    overflow-y: auto;
+    background: var(--bg);
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    padding: 1rem;
+    box-shadow: 0 -12px 40px rgba(26,18,24,.18);
+    transform: translateY(115%);
+    visibility: hidden;
+    transition: transform var(--t-slow) var(--ease-out), visibility 0s var(--t-slow);
+  }
+  .summaryWrapOpen {
+    transform: translateY(0);
+    visibility: visible;
+    transition: transform var(--t-slow) var(--ease-out), visibility 0s;
+  }
+
+  /* Dentro do sheet, o card do resumo perde sticky/altura própria (quem rola
+     é o sheet) e a moldura (o sheet já tem fundo e sombra). */
+  .summaryWrap > div {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+  }
 }
 @media (max-width: 768px) {
   .main { padding: 0 1rem; margin-top: 1rem; }
