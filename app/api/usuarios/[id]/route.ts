@@ -6,7 +6,9 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
 
-const TEMAS = ['dark', 'light', 'violet', 'midnight', 'forest', 'rose'] as const
+// 'sublime' = tema padrão novo (creme + rosa da loja) do dashboard/app.
+// Sem ele aqui, salvar esse tema no perfil retornava 400 e não persistia.
+const TEMAS = ['sublime', 'dark', 'light', 'violet', 'midnight', 'forest', 'rose'] as const
 
 const updateSchema = z.object({
   nome:       z.string().min(2).optional(),
@@ -14,7 +16,13 @@ const updateSchema = z.object({
   foto:       z.string().url().nullable().optional(),
   tema:       z.enum(TEMAS).optional(),
   ativo:      z.boolean().optional(),
-  senha:      z.string().min(6).optional(),
+  // Mesma política da criação (POST /api/usuarios): 8+ caracteres, ao menos
+  // 1 letra e 1 número — antes aceitava 6 sem complexidade (senha fraca).
+  senha: z.string()
+    .min(8,           'Senha deve ter no mínimo 8 caracteres')
+    .regex(/[a-zA-Z]/, 'Senha deve conter pelo menos uma letra')
+    .regex(/[0-9]/,    'Senha deve conter pelo menos um número')
+    .optional(),
   permissoes: z.object({
     estoque:  z.object({ ver: z.boolean(), editar: z.boolean() }),
     pedidos:  z.object({ ver: z.boolean(), editar: z.boolean() }),

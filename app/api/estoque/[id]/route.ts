@@ -8,9 +8,10 @@ import { z } from 'zod'
 const patchSchema = z.object({
   qtd:      z.number().int().min(0).optional(),
   valor:    z.number().positive().optional(),
-  imagem:   z.string().optional(),
+  // URL única ou array JSON de até 5 URLs — cap de tamanho (ver POST /api/estoque)
+  imagem:   z.string().max(2048).optional(),
   filtros:  z.string().optional(),
-  detalhes: z.string().nullable().optional(),
+  detalhes: z.string().max(5000).nullable().optional(),
 })
 
 export async function PATCH(
