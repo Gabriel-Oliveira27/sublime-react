@@ -1,11 +1,15 @@
 // components/store/LocationMapModal.jsx
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import 'leaflet/dist/leaflet.css';
 import styles from './LocationMapModal.module.css';
 
 /**
  * Modal estilo iFood para ajuste de localização.
- * Carrega Leaflet via CDN (sem npm install).
+ *
+ * Leaflet é AUTO-HOSPEDADO (npm + import dinâmico). A versão por CDN
+ * (unpkg.com) era bloqueada pela CSP em produção — o modal abria com o
+ * mapa em branco e o fluxo de GPS/mapa "não abria nada".
  *
  * Props:
  *   initialLat / initialLon — coordenadas GPS para centrar o mapa
@@ -20,15 +24,15 @@ export default function LocationMapModal({ initialLat, initialLon, onConfirm, on
   const [loading,   setLoading]   = useState(false);
   const [address,   setAddress]   = useState('');
 
-  /* ── Carrega Leaflet via CDN (só uma vez) ── */
+  /* ── Carrega Leaflet (bundle próprio, import dinâmico) ── */
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const onKey = e => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
+    let cancelled = false;
 
-    const initMap = () => {
-      if (!mapRef.current || mapInstance.current) return;
-      const L = window.L;
+    const initMap = (L) => {
+      if (cancelled || !mapRef.current || mapInstance.current) return;
       const lat = initialLat || -15.78;
       const lon = initialLon || -47.93;
 
@@ -61,24 +65,12 @@ export default function LocationMapModal({ initialLat, initialLon, onConfirm, on
       map.on('click', e => { marker.setLatLng(e.latlng); updateCoords(e.latlng); });
     };
 
-    // Check if Leaflet already loaded
-    if (window.L) { initMap(); }
-    else {
-      // CSS
-      if (!document.querySelector('link[href*="leaflet"]')) {
-        const link = document.createElement('link');
-        link.rel  = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        document.head.appendChild(link);
-      }
-      // JS
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = initMap;
-      document.head.appendChild(script);
-    }
+    import('leaflet')
+      .then(mod => initMap(mod.default ?? mod))
+      .catch(err => console.error('[LocationMapModal] falha ao carregar o Leaflet:', err));
 
     return () => {
+      cancelled = true;
       document.body.style.overflow = '';
       window.removeEventListener('keydown', onKey);
       mapInstance.current?.remove();

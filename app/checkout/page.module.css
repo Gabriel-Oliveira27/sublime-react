@@ -205,6 +205,55 @@
 .exitModal p  { color: var(--text-secondary); font-size: .9rem; margin-bottom: 1.5rem; line-height: 1.5; }
 .exitActions { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
 
+/* ── "Já fez alguma compra conosco?" (etapa 1) ──────────── */
+.returningBox {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface-muted);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-lg);
+}
+.returningTitle {
+  margin: 0 0 .75rem;
+  font-weight: 700;
+  font-size: .95rem;
+  color: var(--text-primary);
+}
+.returningOpts { display: flex; gap: .6rem; flex-wrap: wrap; }
+.returningOpt {
+  padding: .55rem 1.1rem;
+  border-radius: var(--r-full);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: .85rem;
+  transition: all var(--t-base);
+}
+.returningOpt:hover { border-color: var(--accent); color: var(--accent); }
+.returningOptActive {
+  border-color: var(--accent);
+  background: var(--rose-blush);
+  color: var(--accent);
+}
+.lookupArea {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+.lookupHint { color: var(--text-muted); font-size: .78rem; }
+.captchaLookup:empty { display: none; }
+.welcomeBack {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  margin: 1rem 0 0;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--success);
+}
+
 /* ── Endereços salvos (por CPF) ─────────────────────────── */
 .savedBox {
   margin-bottom: 1.25rem;
@@ -220,20 +269,49 @@
 .savedHead p { margin: 0; font-weight: 700; font-size: .9rem; color: var(--text-primary); }
 .savedClose { color: var(--text-muted); line-height: 1; padding: .2rem; }
 .savedClose:hover { color: var(--accent); }
-.savedList { display: flex; flex-direction: column; gap: .5rem; }
+/* Até 10 endereços — a lista rola em vez de dominar a etapa */
+.savedList {
+  display: flex; flex-direction: column; gap: .5rem;
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
 .savedItem {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
   text-align: left;
   padding: .75rem 1rem;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--r-md);
   cursor: pointer;
-  transition: border-color var(--t-base);
+  transition: all var(--t-base);
   width: 100%;
 }
 .savedItem:hover { border-color: var(--accent); }
+.savedItemSelected {
+  border: 2px solid var(--accent);
+  background: var(--rose-blush);
+  box-shadow: 0 0 0 3px rgba(232,77,130,.15);
+}
+.savedItemText { flex: 1; min-width: 0; }
+.savedItemCheck { color: var(--accent); flex-shrink: 0; }
 .savedItemLine1 { display: block; font-weight: 600; font-size: .88rem; color: var(--text-primary); }
 .savedItemLine2 { display: block; font-size: .8rem; color: var(--text-secondary); margin-top: 2px; }
+
+/* Volta da digitação manual para a lista de endereços salvos */
+.backToSaved {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: .4rem 0;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: .85rem;
+}
+.backToSaved:hover { text-decoration: underline; }
 .savedNewBtn {
   margin-top: .75rem; width: 100%; padding: .5rem;
   border: 1px dashed var(--border);

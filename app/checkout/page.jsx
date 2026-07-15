@@ -90,6 +90,15 @@ export default function CheckoutPage() {
   const [captchaToken,    setCaptchaToken]    = useState(null);
   const [summaryOpen,     setSummaryOpen]     = useState(false);
   const captchaRef                            = useRef(null);
+
+  /* ── "Já fez alguma compra conosco?" (etapa 1) ── */
+  const [isReturning,   setIsReturning]   = useState(null); // null = não respondeu
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupName,    setLookupName]    = useState('');   // 1º nome p/ boas-vindas
+  const [lookupToken,   setLookupToken]   = useState(null);
+  const lookupCaptchaRef                  = useRef(null);
+  /* Índice do endereço salvo selecionado na etapa 2 (null = nenhum) */
+  const [selectedAddr,  setSelectedAddr]  = useState(null);
   const [locationDetected, setLocationDetected] = useState(false);
   const [locating,         setLocating]         = useState(false);
   const [showMapModal,     setShowMapModal]     = useState(false);
@@ -196,6 +205,11 @@ export default function CheckoutPage() {
         if (!delivery.pickupDate)        errs.pickupDate = 'Selecione a data';
         if (!delivery.pickupTime)        errs.pickupTime = 'Selecione o horário';
       } else {
+        // Com o picker de endereços salvos aberto, o erro certo é "escolha um"
+        const pickerAtivo = savedAddresses.length > 0 && !pickerDismissed && !locationDetected;
+        if (pickerAtivo && selectedAddr === null) {
+          showToast('Selecione um endereço ou toque em "Digitar novo endereço"', 'error'); return false;
+        }
         if (delivery.cep.replace(/\D/g,'').length !== 8) errs.cep = 'CEP inválido';
         if (!delivery.street || !delivery.number || !delivery.neighborhood || !delivery.city || !delivery.state) {
           showToast('Preencha todos os campos de endereço', 'error'); return false;
@@ -216,18 +230,51 @@ export default function CheckoutPage() {
     return Object.keys(errs).length === 0;
   };
 
+  /* ── Busca de cliente por CPF ("Já fez alguma compra conosco?") ──
+     Preenche nome/telefone e carrega os endereços salvos (até 10). O endpoint
+     exige captcha quando configurado — o token vai no header. */
+  const buscarCliente = async () => {
+    const cpfLimpo = customer.cpf.replace(/\D/g, '');
+    if (!validateCPF(cpfLimpo)) { showToast('Digite um CPF válido para buscar', 'error'); return; }
+    if (captchaAtivo() && !lookupToken) { showToast('Complete a verificação de segurança', 'error'); return; }
+
+    setLookupLoading(true);
+    try {
+      const res  = await fetch(`/api/clientes/lookup?cpf=${cpfLimpo}`, {
+        headers: lookupToken ? { 'X-Captcha-Token': lookupToken } : {},
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
+
+      if (!data.found) {
+        showToast('CPF não encontrado. Preencha seus dados normalmente.', 'info');
+        setIsReturning(false);
+        return;
+      }
+
+      setCustomer(c => ({
+        ...c,
+        name:  data.nome || c.name,
+        phone: data.contato ? applyPhoneMask(data.contato) : c.phone,
+      }));
+      if (data.enderecos?.length) {
+        setSavedAddresses(data.enderecos);
+        setPickerDismissed(false);
+        setSelectedAddr(null);
+      }
+      setLookupName(String(data.nome || '').trim().split(/\s+/)[0] || '');
+      showToast('Dados preenchidos! Confira abaixo.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Erro ao buscar seus dados', 'error');
+    } finally {
+      setLookupLoading(false);
+      // Token do captcha é de uso único — renova para nova tentativa
+      lookupCaptchaRef.current?.reset();
+    }
+  };
+
   const nextStep = async () => {
     if (!validate()) return;
-    // Se avançando do step 1 e CPF preenchido, busca endereços salvos silenciosamente
-    if (step === 1 && customer.cpf) {
-      const cpfLimpo = customer.cpf.replace(/\D/g, '');
-      if (cpfLimpo.length === 11) {
-        fetch(`/api/clientes/enderecos?cpf=${cpfLimpo}`)
-          .then(r => r.json())
-          .then(data => { if (data.enderecos?.length) setSavedAddresses(data.enderecos); })
-          .catch(() => {});
-      }
-    }
     if (step === 2 && delivery.type === 'entrega') {
       const modelo = dynamicConfig?.frete?.modelo ?? 'VALOR';
       // FIXO e VALOR: calcula imediatamente sem precisar de endereço/geocode
@@ -260,7 +307,10 @@ export default function CheckoutPage() {
     else nextStep();
   };
 
-  const applyAddress = (addr) => {
+  /* Seleciona um endereço salvo: preenche os campos (que ficam ocultos),
+     marca o card como escolhido e já calcula o frete. Os campos só aparecem
+     se o cliente pedir "Digitar novo endereço". */
+  const applyAddress = async (addr, idx) => {
     setDelivery(d => ({
       ...d,
       street:       addr.street       || '',
@@ -273,8 +323,24 @@ export default function CheckoutPage() {
       referencia:   addr.referencia   || '',
       lat: null, lon: null, shippingCost: null, distanceKm: null,
     }));
-    setLocationDetected(true);
+    setSelectedAddr(idx);
+    if (addr.city && addr.state) {
+      try {
+        await doCalculateShipping({ city: addr.city, state: addr.state, cep: (addr.cep || '').replace(/\D/g, '') });
+      } catch { /* o cliente ainda pode calcular pelo botão */ }
+    }
+  };
+
+  /* "Digitar novo endereço": esconde o picker e libera os campos limpos */
+  const novoEndereco = () => {
     setPickerDismissed(true);
+    setSelectedAddr(null);
+    setDelivery(d => ({
+      ...d,
+      street: '', number: '', complement: '', neighborhood: '',
+      city: '', state: '', cep: '', referencia: '',
+      lat: null, lon: null, shippingCost: null, distanceKm: null,
+    }));
   };
 
   /* ── CEP ── */
@@ -473,6 +539,10 @@ export default function CheckoutPage() {
   const retiradaOn = recebCfg.retirada || nenhumaOn;
   const entregaOn  = recebCfg.entrega  || nenhumaOn;
 
+  /* Picker de endereços salvos visível? Enquanto estiver, os campos de
+     endereço ficam ocultos — só aparecem em "Digitar novo endereço". */
+  const pickerVisible = savedAddresses.length > 0 && !pickerDismissed && !locationDetected;
+
   // Só uma forma disponível → já entra selecionada na etapa 2
   useEffect(() => {
     if (!dynamicConfig?.loaded || delivery.type) return;
@@ -520,6 +590,53 @@ export default function CheckoutPage() {
             {step === 1 && (
               <div>
                 <h2 className={styles.stepTitle}>Seus Dados</h2>
+
+                {/* ── Já comprou conosco? Busca por CPF preenche tudo ── */}
+                <div className={styles.returningBox}>
+                  <p className={styles.returningTitle}>Já fez alguma compra conosco?</p>
+                  <div className={styles.returningOpts}>
+                    <button type="button"
+                      className={`${styles.returningOpt} ${isReturning === true ? styles.returningOptActive : ''}`}
+                      aria-pressed={isReturning === true}
+                      onClick={() => setIsReturning(true)}>
+                      Sim, buscar meus dados
+                    </button>
+                    <button type="button"
+                      className={`${styles.returningOpt} ${isReturning === false ? styles.returningOptActive : ''}`}
+                      aria-pressed={isReturning === false}
+                      onClick={() => { setIsReturning(false); setLookupName(''); }}>
+                      É minha primeira compra
+                    </button>
+                  </div>
+
+                  {isReturning === true && !lookupName && (
+                    <div className={styles.lookupArea}>
+                      <div className={styles.cepRow}>
+                        <input className="form-input" placeholder="Seu CPF (000.000.000-00)" inputMode="numeric"
+                          value={customer.cpf}
+                          onChange={e => setCustomer(c => ({ ...c, cpf: applyCPFMask(e.target.value) }))}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); buscarCliente(); }
+                          }}/>
+                        <button type="button" className={styles.inlineBtn} onClick={buscarCliente} disabled={lookupLoading}>
+                          {lookupLoading ? 'Buscando…' : 'Buscar'}
+                        </button>
+                      </div>
+                      <TurnstileWidget ref={lookupCaptchaRef} onToken={setLookupToken} className={styles.captchaLookup}/>
+                      <small className={styles.lookupHint}>
+                        Usamos o CPF apenas para localizar seus dados de compras anteriores.
+                      </small>
+                    </div>
+                  )}
+
+                  {lookupName && (
+                    <p className={styles.welcomeBack}>
+                      <CheckCircleIcon size={15}/>
+                      Bem-vindo(a) de volta, {lookupName}! Confira os dados abaixo.
+                    </p>
+                  )}
+                </div>
+
                 <div className="form-group">
                   <label>Nome Completo *</label>
                   <input className="form-input" value={customer.name} autoComplete="name"
@@ -533,14 +650,17 @@ export default function CheckoutPage() {
                     onChange={e => setCustomer(c => ({ ...c, phone: applyPhoneMask(e.target.value) }))}/>
                   {E('phone')}
                 </div>
-                <div className="form-group">
-                  <label>CPF <span className={styles.labelNote}>(opcional — necessário para rastrear pedidos)</span></label>
-                  <input className="form-input" placeholder="000.000.000-00" inputMode="numeric"
-                    value={customer.cpf}
-                    onChange={e => setCustomer(c => ({ ...c, cpf: applyCPFMask(e.target.value) }))}/>
-                  {E('cpf')}
-                  <small className={styles.hint}>Se informado, use para consultar seus pedidos em Minhas Compras.</small>
-                </div>
+                {/* Com "Sim, buscar meus dados" o CPF já foi digitado acima */}
+                {isReturning !== true && (
+                  <div className="form-group">
+                    <label>CPF <span className={styles.labelNote}>(opcional — necessário para rastrear pedidos)</span></label>
+                    <input className="form-input" placeholder="000.000.000-00" inputMode="numeric"
+                      value={customer.cpf}
+                      onChange={e => setCustomer(c => ({ ...c, cpf: applyCPFMask(e.target.value) }))}/>
+                    {E('cpf')}
+                    <small className={styles.hint}>Se informado, use para consultar seus pedidos em Minhas Compras.</small>
+                  </div>
+                )}
                 <div className={styles.actions}>
                   <button className="btn btn-primary" onClick={nextStep}>Avançar →</button>
                 </div>
@@ -611,32 +731,48 @@ export default function CheckoutPage() {
                   <>
                     <div className="info-box"><strong>Origem:</strong> {CONFIG.ORIGIN.STREET} — CEP {CONFIG.ORIGIN.CEP}</div>
 
-                    {/* ── Picker de endereços salvos ── */}
-                    {savedAddresses.length > 0 && !pickerDismissed && !locationDetected && (
+                    {/* ── Picker de endereços salvos (até 10) ── */}
+                    {pickerVisible && (
                       <div className={styles.savedBox}>
                         <div className={styles.savedHead}>
-                          <p>Usar um endereço anterior?</p>
-                          <button type="button" className={styles.savedClose}
-                            onClick={() => setPickerDismissed(true)} aria-label="Fechar">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                          </button>
+                          <p>Escolha um endereço de entrega</p>
                         </div>
                         <div className={styles.savedList}>
                           {savedAddresses.map((addr, i) => (
-                            <button key={i} type="button" className={styles.savedItem} onClick={() => applyAddress(addr)}>
-                              <span className={styles.savedItemLine1}>
-                                {addr.street}{addr.number ? `, ${addr.number}` : ''}{addr.complement ? ` – ${addr.complement}` : ''}
+                            <button key={i} type="button"
+                              className={`${styles.savedItem} ${selectedAddr === i ? styles.savedItemSelected : ''}`}
+                              aria-pressed={selectedAddr === i}
+                              onClick={() => applyAddress(addr, i)}>
+                              <span className={styles.savedItemText}>
+                                <span className={styles.savedItemLine1}>
+                                  {addr.street}{addr.number ? `, ${addr.number}` : ''}{addr.complement ? ` – ${addr.complement}` : ''}
+                                </span>
+                                <span className={styles.savedItemLine2}>
+                                  {addr.neighborhood && `${addr.neighborhood}, `}{addr.city}/{addr.state}
+                                  {addr.referencia && ` — ${addr.referencia}`}
+                                </span>
                               </span>
-                              <span className={styles.savedItemLine2}>
-                                {addr.neighborhood && `${addr.neighborhood}, `}{addr.city}/{addr.state}
-                                {addr.referencia && ` — ${addr.referencia}`}
-                              </span>
+                              {selectedAddr === i && (
+                                <CheckCircleIcon size={20} className={styles.savedItemCheck}/>
+                              )}
                             </button>
                           ))}
                         </div>
-                        <button type="button" className={styles.savedNewBtn} onClick={() => setPickerDismissed(true)}>
+                        <button type="button" className={styles.savedNewBtn} onClick={novoEndereco}>
                           + Digitar novo endereço
                         </button>
+                      </div>
+                    )}
+
+                    {/* Endereço salvo sem ponto de referência: só esse campo aparece */}
+                    {pickerVisible && selectedAddr !== null && !savedAddresses[selectedAddr]?.referencia && (
+                      <div className="form-group">
+                        <label>Ponto de Referência *</label>
+                        <input className="form-input"
+                          placeholder="Ex: Próximo ao mercado X, casa de portão azul…"
+                          value={delivery.referencia}
+                          onChange={e => setDelivery(d => ({ ...d, referencia: e.target.value }))}/>
+                        {E('referencia')}
                       </div>
                     )}
 
@@ -644,7 +780,7 @@ export default function CheckoutPage() {
                         Com endereços salvos na tela, o convite do GPS encolhe
                         para uma linha — evita dois blocões empilhados. */}
                     {!locationDetected ? (
-                      savedAddresses.length > 0 && !pickerDismissed ? (
+                      pickerVisible ? (
                         <div className={styles.gpsCompact}>
                           <button type="button" onClick={doDetectLocation} disabled={locating}>
                             {locating ? 'Detectando…' : 'ou usar minha localização'}
@@ -696,6 +832,15 @@ export default function CheckoutPage() {
                       </div>
                     )}
 
+                    {/* Campos de endereço — ocultos enquanto o picker de
+                        endereços salvos estiver na tela */}
+                    {!pickerVisible && <>
+                    {savedAddresses.length > 0 && (
+                      <button type="button" className={styles.backToSaved}
+                        onClick={() => { setPickerDismissed(false); setLocationDetected(false); setSelectedAddr(null); }}>
+                        ← Usar um endereço salvo
+                      </button>
+                    )}
                     <div className="form-group">
                       <label>CEP *</label>
                       <div className={styles.cepRow}>
@@ -758,6 +903,8 @@ export default function CheckoutPage() {
                     <button className={styles.calcFreteBtn} onClick={() => doCalculateShipping()}>
                       Calcular frete
                     </button>
+                    </>}
+
                     {delivery.shippingCost !== null && typeof delivery.shippingCost === 'number' && (
                       <div className={styles.shippingResult}>
                         <CheckCircleIcon size={18}/>
