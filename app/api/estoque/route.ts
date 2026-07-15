@@ -10,9 +10,11 @@ const createSchema = z.object({
   cores:   z.string().default(''),
   qtd:     z.number().int().min(0),
   valor:   z.number().min(0),
-  imagem:   z.string().default(''),
+  // Limite de tamanho: uma URL única ou um array JSON de até 5 URLs do
+  // Cloudinary cabe folgado em 2048 — evita gravar strings gigantes no banco.
+  imagem:   z.string().max(2048).default(''),
   filtros:  z.string().default(''),
-  detalhes: z.string().nullable().optional(),
+  detalhes: z.string().max(5000).nullable().optional(),
 })
 
 export async function GET() {
