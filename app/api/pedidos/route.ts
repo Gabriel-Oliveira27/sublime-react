@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { prisma } from '@/lib/prisma'
+import { TAG_ESTOQUE } from '@/lib/cache'
 import { sendPushToAll } from '@/lib/push'
 import { autenticar } from '@/lib/middleware'
 import { CORS_HEADERS, corsOptions } from '@/lib/cors'
@@ -215,6 +217,9 @@ export async function POST(req: NextRequest) {
         data:  { idRastreio: `VD-${String(criado.id).padStart(3, '0')}` },
       })
     }, { timeout: 15_000 })
+
+    // A reserva decrementou o estoque — derruba o cache da vitrine na hora.
+    revalidateTag(TAG_ESTOQUE)
 
     // Upsert Cliente — não-crítico, fora da tx principal
     if (cpfLimpo) {

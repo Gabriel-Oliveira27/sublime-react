@@ -1,6 +1,8 @@
 // app/api/estoque/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { prisma } from '@/lib/prisma'
+import { TAG_ESTOQUE } from '@/lib/cache'
 import { exigirPermissao } from '@/lib/middleware'
 import { CORS_HEADERS, corsOptions } from '@/lib/cors'
 import { z } from 'zod'
@@ -42,6 +44,7 @@ export async function PATCH(
       data:  parsed.data,
     })
 
+    revalidateTag(TAG_ESTOQUE)
     return NextResponse.json(item, { headers: CORS_HEADERS })
   } catch (err) {
     console.error('[PATCH /api/estoque/:id]', err)
@@ -64,6 +67,7 @@ export async function DELETE(
 
   try {
     await prisma.estoque.delete({ where: { id: idNum } })
+    revalidateTag(TAG_ESTOQUE)
     return NextResponse.json({ sucesso: true }, { headers: CORS_HEADERS })
   } catch (err) {
     console.error('[DELETE /api/estoque/:id]', err)

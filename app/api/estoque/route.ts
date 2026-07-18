@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { prisma } from '@/lib/prisma'
+import { getEstoqueCached, TAG_ESTOQUE } from '@/lib/cache'
 import { exigirPermissao } from '@/lib/middleware'
 import { z } from 'zod'
 
@@ -19,7 +21,7 @@ const createSchema = z.object({
 
 export async function GET() {
   try {
-    const estoque = await prisma.estoque.findMany({ orderBy: { produto: 'asc' } })
+    const estoque = await getEstoqueCached()
     return NextResponse.json(estoque)
   } catch (err) {
     console.error('[GET /api/estoque]', err)
@@ -50,6 +52,7 @@ export async function POST(req: NextRequest) {
     }
 
     const item = await prisma.estoque.create({ data })
+    revalidateTag(TAG_ESTOQUE)
     return NextResponse.json(item, { status: 201 })
   } catch (err) {
     console.error('[POST /api/estoque]', err)
