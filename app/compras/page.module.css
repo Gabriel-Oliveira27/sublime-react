@@ -1,16 +1,17 @@
 .hero {
   background: linear-gradient(135deg, var(--rose) 0%, var(--lavender) 100%);
   color: white;
-  padding: 1.75rem 1.5rem;
+  padding: 2.25rem 1.5rem 4.5rem;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: .5rem;
+  gap: .35rem;
 }
-.hero p { font-size: 1rem; opacity: .9; }
+.hero h1 { color: white; font-size: clamp(1.6rem, 4vw, 2.1rem); }
+.hero p  { font-size: .95rem; opacity: .9; }
 
-/* Search float */
+/* Search float — um card único sobreposto ao hero */
 .searchFloat {
   max-width: 900px;
   margin: -3rem auto 3rem;
@@ -18,99 +19,102 @@
   position: relative;
   z-index: 10;
 }
-.searchCard {
+.searchPanel {
   background: var(--surface);
-  border: 2px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: var(--r-lg);
-  padding: 2rem;
+  padding: 1.75rem 2rem;
   box-shadow: var(--shadow-lg);
+}
+.panelHead {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1.25rem;
   margin-bottom: 1.5rem;
 }
 .searchIconWrap {
-  width: 60px; height: 60px;
+  width: 52px; height: 52px;
   background: linear-gradient(135deg, var(--rose) 0%, var(--lavender) 100%);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
 .searchIconSvg { color: white; }
-.searchCard h3 { font-size: 1.5rem; color: var(--text-primary); margin-bottom: .25rem; }
-.searchCard p  { font-size: .95rem; color: var(--text-secondary); }
+.panelHead h2 { font-size: 1.35rem; color: var(--text-primary); margin-bottom: .15rem; }
+.panelHead p  { font-size: .9rem; color: var(--text-secondary); }
 
-.searchForm {
-  background: var(--surface);
-  border: 2px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 1.5rem;
-  box-shadow: var(--shadow-lg);
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-.inputGroup {
-  flex: 1;
-  min-width: 280px;
-  display: flex;
-  gap: .75rem;
-}
+/* Campos com label visível — mesmo padrão do checkout (.form-group) */
+.field { display: flex; flex-direction: column; gap: .4rem; }
+.fieldLabel { font-weight: 600; font-size: .9rem; color: var(--text-primary); }
 .searchInput {
-  flex: 1;
-  padding: .875rem 1.25rem;
-  border: 2px solid var(--border);
+  padding: .75rem 1rem;
+  border: 1.5px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface-muted);
+  background: var(--surface);
   color: var(--text-primary);
   font-size: 1rem;
   font-family: 'DM Sans', sans-serif;
   transition: all var(--t-base);
+  width: 100%;
 }
-.searchInput:focus { outline: none; border-color: var(--accent); background: white; }
-.btnSearch {
-  padding: .875rem 1.75rem;
-  border-radius: var(--r-md);
-  background: var(--accent);
-  color: white;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: all var(--t-base);
-  display: flex; align-items: center; gap: .5rem;
-  border: none; cursor: pointer;
-  white-space: nowrap;
+.searchInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(232,77,130,.1);
 }
-.btnSearch:hover { background: var(--lavender); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(232,77,130,.4); }
-/* Widget do captcha (Turnstile) — ocupa a linha inteira dentro do form */
+.hint { font-size: .78rem; color: var(--text-muted); }
+
+/* Campo de telefone entra/sai com animação de altura — sem salto de layout */
+.phoneReveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--t-base) var(--ease-out);
+}
+.phoneOpen { grid-template-rows: 1fr; }
+.phoneInner { overflow: hidden; visibility: hidden; transition: visibility var(--t-base); }
+.phoneOpen .phoneInner { visibility: visible; }
+.phoneInner .field { padding-top: 1rem; }
+
+/* Widget do captcha (Turnstile) */
 .captcha {
-  flex-basis: 100%;
   display: flex;
   justify-content: center;
+  margin-top: 1rem;
 }
 .captcha:empty { display: none; }
 
-.btnClear {
-  padding: .875rem 1.5rem;
-  border-radius: var(--r-md);
-  background: var(--surface-muted);
-  color: var(--text-primary);
-  border: 2px solid var(--border);
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all var(--t-base);
-  font-family: 'DM Sans', sans-serif;
+.actions {
+  display: flex;
+  gap: .75rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
 }
-.btnClear:hover { background: var(--error); color: white; border-color: var(--error); }
+.btnSearch { flex: 1; max-width: 260px; }
+.btnSearch:disabled, .btnClear:disabled {
+  opacity: .65;
+  pointer-events: none;
+  transform: none;
+}
 
 /* Results */
 .results {
   flex: 1;
-  max-width: 1400px;
+  max-width: 960px;
   margin: 0 auto 4rem;
   padding: 0 1.5rem;
   width: 100%;
   min-height: 400px;
+  /* o header é sticky — sem isso o scrollIntoView esconde o topo da lista */
+  scroll-margin-top: calc(var(--header-h) + 12px);
+}
+
+.resultCount {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding-bottom: .75rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .emptyState {
@@ -124,9 +128,10 @@
 }
 .emptyState h3 { font-size: 1.5rem; color: var(--text-primary); }
 .emptyState p  { max-width: 500px; }
-.retryBtn { margin-top: .5rem; height: 44px; border-radius: var(--r-full); }
+.noResultsIcon { color: var(--border-strong); }
+.retryBtn { margin-top: .5rem; }
 
-/* ── Lista de pedidos: módulos empilhados (largura de 3 cards, ~5rem alto) ── */
+/* ── Lista de pedidos: módulos empilhados ── */
 .grid {
   display: flex;
   flex-direction: column;
@@ -135,23 +140,24 @@
 
 .row {
   background: var(--surface);
-  border: 2px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: var(--r-lg);
   min-height: 5rem;
-  padding: 1rem 1.5rem 1rem 1.75rem;
+  padding: 1.1rem 1.5rem 1.1rem 1.75rem;
   display: flex;
   align-items: center;
   gap: 2rem;
   position: relative;
   overflow: hidden;
-  transition: all var(--t-base);
+  transition: border-color var(--t-base), box-shadow var(--t-base);
 }
 .row::before {
   content: '';
   position: absolute; top: 0; left: 0; bottom: 0; width: 4px;
   background: linear-gradient(180deg, var(--rose) 0%, var(--lavender) 100%);
 }
-.row:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--accent); }
+/* Sem elevação no hover — o card não é clicável */
+.row:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
 
 /* Coluna esquerda — número, status e informações */
 .rowMain {
@@ -159,17 +165,18 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: .45rem;
+  gap: .35rem;
 }
-.rowHeader { display: flex; align-items: center; gap: .75rem; }
+.rowHeader { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
 .orderNum { font-size: 1.15rem; font-weight: 700; color: var(--accent); }
 .status {
-  padding: .25rem .7rem;
-  border-radius: 20px;
-  font-size: .72rem;
+  padding: .28rem .75rem;
+  border-radius: var(--r-full);
+  font-size: .75rem;
   font-weight: 600;
   white-space: nowrap;
 }
+.rowDate { font-size: .8rem; color: var(--text-muted); }
 .rowInfo { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .rowProducts {
   font-size: .82rem; color: var(--text-secondary);
@@ -184,6 +191,9 @@
   display: flex;
   align-items: flex-start;
   gap: .25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 .htStep {
   flex: 1;
@@ -192,41 +202,68 @@
 }
 .htStep:not(:last-child)::after {
   content: '';
-  position: absolute; top: 8px; left: 50%;
+  position: absolute; top: 9px; left: 50%;
   width: 100%; height: 2px;
   background: var(--border); z-index: 0;
 }
 .htActive:not(:last-child)::after { background: var(--accent); }
 .htDot {
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--surface-muted); border: 2px solid var(--border);
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--surface-muted); border: 1.5px solid var(--border-strong);
   position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  color: white;
 }
-.htActive .htDot {
-  background: var(--accent); border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(232,77,130,.2);
-}
-.htLabel { font-size: .68rem; line-height: 1.15; font-weight: 600; color: var(--text-secondary); }
-.htActive .htLabel { color: var(--accent); }
-.htCancelled .htDot { background: #f8d7da; border-color: #721c24; }
-.htCancelled .htLabel { color: #721c24; text-decoration: line-through; opacity: .7; }
+.htDot svg { width: 11px; height: 11px; }
+.htActive .htDot { background: var(--accent); border-color: var(--accent); }
+/* Etapa atual — anel de destaque (o check já marca as concluídas sem depender de cor) */
+.htStep[aria-current="step"] .htDot { box-shadow: 0 0 0 3px rgba(232,77,130,.2); }
+.htLabel { font-size: .75rem; line-height: 1.2; font-weight: 500; color: var(--text-muted); }
+.htActive .htLabel { color: var(--text-secondary); }
+.htStep[aria-current="step"] .htLabel { color: var(--accent); font-weight: 600; }
 
-/* Cores de status */
-.statusPending    { background: #fff3cd; color: #856404; }
-.statusConfirmed  { background: #d1ecf1; color: #0c5460; }
-.statusSeparating { background: #cce5ff; color: #004085; }
-.statusShipping   { background: #d4edda; color: #155724; }
-.statusDelivered  { background: #a8e6cf; color: #1e5631; }
-.statusCancelled  { background: #f8d7da; color: #721c24; }
+/* Pedido cancelado — aviso claro no lugar do stepper */
+.cancelledNote {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  padding: .85rem 1.1rem;
+  background: rgba(220,38,38,.07);
+  border: 1.5px solid rgba(220,38,38,.22);
+  border-radius: var(--r-md);
+  color: #B91C1C;
+}
+.cancelledNote svg { flex-shrink: 0; }
+.cancelledNote strong { display: block; font-size: .9rem; }
+.cancelledNote span { font-size: .8rem; color: var(--text-secondary); }
+
+/* Cores de status — derivadas da paleta do sistema (tokens) */
+.statusPending    { background: rgba(217,119,6,.12);  color: #935B0B; }  /* warning  */
+.statusConfirmed  { background: rgba(37,99,235,.10);  color: #1D4ED8; }  /* info     */
+.statusSeparating { background: var(--lavender-pale); color: #6A4FBF; }  /* lavender */
+.statusShipping   { background: var(--rose-pale);     color: #C2266A; }  /* rose     */
+.statusDelivered  { background: rgba(45,158,107,.14); color: #1E7A51; }  /* success  */
+.statusCancelled  { background: rgba(220,38,38,.10);  color: #B91C1C; }  /* error    */
 
 @media (max-width: 768px) {
-  .hero p { font-size: 1rem; }
-  .searchFloat { margin: -2rem auto 2rem; }
-  .searchCard { flex-direction: column; text-align: center; padding: 1.5rem; }
-  .searchForm { flex-direction: column; }
-  .inputGroup { flex-direction: column; min-width: 100%; }
+  .hero { padding: 1.75rem 1.5rem 3.5rem; }
+  .searchFloat { margin: -2.5rem auto 2rem; padding: 0 1rem; }
+  .searchPanel { padding: 1.25rem; }
+  .panelHead { gap: 1rem; margin-bottom: 1.25rem; }
+  .actions { flex-direction: column; }
+  .btnSearch { max-width: none; width: 100%; }
+  .btnClear { width: 100%; }
 
   /* Em telas estreitas o módulo empilha: info em cima, etapas embaixo */
   .row { flex-direction: column; align-items: stretch; gap: 1rem; padding: 1.25rem; }
   .rowMain { flex: none; }
+
+  /* Sem hover no touch — o title não abre; deixa a lista quebrar em 2 linhas */
+  .rowProducts {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
 }

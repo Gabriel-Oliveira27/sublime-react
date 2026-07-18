@@ -1,13 +1,13 @@
 'use client';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import PackageSearchIcon from '@/components/icons/PackageSearchIcon';
-import { SearchIcon } from '@/components/icons/Icons';
+import { SearchIcon, XCircleIcon } from '@/components/icons/Icons';
 import TurnstileWidget, { captchaAtivo } from '@/components/security/TurnstileWidget';
 import { useToast } from '@/context/ToastContext';
 import { checkOrder } from '@/lib/api';
-import { applyCPFMask, applyPhoneMask } from '@/lib/utils';
+import { applyCPFMask, applyPhoneMask, validateCPF, formatBRL } from '@/lib/utils';
 import styles from './page.module.css';
 
 /* ── Etapas ──────────────────────────────────────────── */
@@ -32,11 +32,9 @@ const ETAPA_LABELS = {
 };
 
 function buildTimeline(etapa) {
-  if (etapa === 'CANCELADO') {
-    return TIMELINE_STEPS.map(step => ({ step, active: false, cancelled: true }));
-  }
+  if (etapa === 'CANCELADO') return [];
   const idx = STAGE_IDX[etapa] ?? 0;
-  return TIMELINE_STEPS.map((step, i) => ({ step, active: i <= idx }));
+  return TIMELINE_STEPS.map((step, i) => ({ step, active: i <= idx, current: i === idx }));
 }
 
 function mapStatus(etapa) {
@@ -62,6 +60,12 @@ function parseProducts(raw) {
   });
 }
 
+function formatDate(raw) {
+  if (!raw) return null;
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? null : d.toLocaleDateString('pt-BR');
+}
+
 function normaliseOrders(raw) {
   return raw.map(o => ({
     vdNumber:   String(o.idRastreio || o.vd || o.id || '').trim(),
@@ -69,6 +73,8 @@ function normaliseOrders(raw) {
     statusText: ETAPA_LABELS[o.etapa] || String(o.etapa || o.status || '').trim() || 'Reservado',
     products:   parseProducts(o.pedido || o.order || o.items || ''),
     total:      Number(o.totalVenda || o.total || 0) || 0,
+    date:       formatDate(o.dataCompra || o.date),
+    cancelled:  (o.etapa || o.status) === 'CANCELADO',
     timeline:   buildTimeline(o.etapa || o.status || 'RESERVADO'),
   }));
 }
@@ -83,11 +89,15 @@ const STATUS_CLS = {
 };
 
 /* ── Detecta modo de input ─────────────────────────────
-   VD: começa com V, D, V-, VD ou VD-NNN
+   VD: começa com V ou D (ex: VD-012, vd12)
    CPF: qualquer outra coisa (dígitos)
 ─────────────────────────────────────────────────────── */
 function detectMode(val) {
   return /^[VvDd]/.test(val) ? 'vd' : 'cpf';
+}
+
+function pluralPedidos(n) {
+  return n === 1 ? '1 pedido encontrado' : `${n} pedidos encontrados`;
 }
 
 /* ── Component ─────────────────────────────────────── */
@@ -100,9 +110,22 @@ export default function ComprasPage() {
   const [orders,   setOrders]   = useState([]);
   const [captchaToken, setCaptchaToken] = useState(null);
   const captchaRef = useRef(null);
+  const inputRef   = useRef(null);
+  const resultsRef = useRef(null);
 
   const mode = detectMode(input);
   const showPhoneField = mode === 'cpf' && input.length >= 3;
+  const loading = uiState === 'loading';
+
+  /* Depois de buscar, garante que o retorno fique visível (no celular o
+     resultado nasce abaixo da dobra). Só rola se estiver longe da vista. */
+  useEffect(() => {
+    if (uiState !== 'loading' && uiState !== 'results' && uiState !== 'no-results') return;
+    const el = resultsRef.current;
+    if (el && el.getBoundingClientRect().top > window.innerHeight * 0.45) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [uiState]);
 
   /* Formata conforme o modo */
   const handleInput = (e) => {
@@ -116,20 +139,30 @@ export default function ComprasPage() {
   };
 
   const search = useCallback(async () => {
-    const val = input.trim();
+    let val = input.trim();
     if (!val) { showToast('Digite um CPF ou número VD', 'error'); return; }
 
-    const vdOk  = /^VD-\d{1,6}$/i.test(val);
-    const cpfOk = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(val);
+    const isVd = detectMode(val) === 'vd';
 
-    if (!vdOk && !cpfOk) {
-      showToast('Formato inválido. Use CPF (000.000.000-00) ou VD (VD-001)', 'error');
-      return;
-    }
-
-    if (cpfOk && !phone.trim()) {
-      showToast('Informe o telefone de contato para buscar pelo CPF', 'error');
-      return;
+    if (isVd) {
+      // Aceita variações como "VD012" ou "vd 12" e normaliza para VD-NNN.
+      const digits = val.replace(/\D/g, '');
+      if (!digits || digits.length > 6) {
+        showToast('Número VD inválido. Exemplo: VD-001', 'error');
+        return;
+      }
+      val = `VD-${digits}`;
+      if (val !== input) setInput(val);
+    } else {
+      const cpfClean = val.replace(/\D/g, '');
+      if (!validateCPF(cpfClean)) {
+        showToast('Digite um CPF válido para buscar', 'error');
+        return;
+      }
+      if (!phone.trim()) {
+        showToast('Informe o telefone de contato para buscar pelo CPF', 'error');
+        return;
+      }
     }
 
     if (captchaAtivo() && !captchaToken) {
@@ -141,7 +174,7 @@ export default function ComprasPage() {
     try {
       let found;
 
-      if (vdOk) {
+      if (isVd) {
         const res = await checkOrder(val, captchaToken);
         found = res.order ? normaliseOrders([res.order]) : [];
       } else {
@@ -165,7 +198,7 @@ export default function ComprasPage() {
       if (found.length) {
         setOrders(found);
         setUiState('results');
-        showToast(`${found.length} pedido(s) encontrado(s)`, 'success');
+        showToast(pluralPedidos(found.length), 'success');
       } else {
         setUiState('no-results');
         showToast('Nenhum pedido encontrado', 'info');
@@ -181,59 +214,89 @@ export default function ComprasPage() {
 
   const clear = () => { setInput(''); setPhone(''); setUiState('empty'); setOrders([]); };
 
+  /* Volta ao formulário mantendo o que foi digitado — quem errou um
+     dígito não precisa preencher tudo de novo. */
+  const retry = () => {
+    setUiState('empty');
+    inputRef.current?.focus();
+    inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const onEnter = (e) => { if (e.key === 'Enter' && !loading) search(); };
+
   return (
     <>
       <Header backHref="/" backLabel="Loja" showSearch={false} showCart={false}/>
 
       <section className={styles.hero}>
         <PackageSearchIcon size={48} color="white"/>
-        <p>Acompanhe seus pedidos</p>
+        <h1>Acompanhe seus pedidos</h1>
+        <p>Veja em que etapa está a sua compra</p>
       </section>
 
       <div className={styles.searchFloat}>
-        <div className={styles.searchCard}>
-          <div className={styles.searchIconWrap}>
-            <SearchIcon size={26} className={styles.searchIconSvg}/>
+        <div className={styles.searchPanel}>
+          <div className={styles.panelHead}>
+            <div className={styles.searchIconWrap}>
+              <SearchIcon size={24} className={styles.searchIconSvg}/>
+            </div>
+            <div>
+              <h2>Busque suas compras</h2>
+              <p>Pelo número VD do pedido, ou pelo seu CPF e telefone de contato</p>
+            </div>
           </div>
-          <div>
-            <h3>Busque suas compras</h3>
-            <p>Pelo número VD ou CPF + telefone de contato</p>
-          </div>
-        </div>
 
-        <div className={styles.searchForm}>
-          <div className={styles.inputGroup}>
+          <div className={styles.field}>
+            <label className={styles.fieldLabel} htmlFor="track-query">Número VD ou CPF</label>
             <input
+              id="track-query"
+              ref={inputRef}
               className={styles.searchInput}
               type="text"
-              placeholder="VD-001 ou CPF (000.000.000-00)"
-              maxLength={18}
+              placeholder="VD-001 ou 000.000.000-00"
+              maxLength={14}
               value={input}
               onChange={handleInput}
-              onKeyDown={e => { if (e.key === 'Enter') search(); }}
+              onKeyDown={onEnter}
             />
-            {showPhoneField && (
-              <input
-                className={styles.searchInput}
-                type="text"
-                placeholder="Telefone de contato"
-                maxLength={15}
-                value={phone}
-                onChange={e => setPhone(applyPhoneMask(e.target.value))}
-                onKeyDown={e => { if (e.key === 'Enter') search(); }}
-              />
-            )}
-            <button className={styles.btnSearch} onClick={search}>
-              <SearchIcon size={18}/>
-              Buscar
+          </div>
+
+          <div className={`${styles.phoneReveal} ${showPhoneField ? styles.phoneOpen : ''}`}>
+            <div className={styles.phoneInner}>
+              <div className={styles.field}>
+                <label className={styles.fieldLabel} htmlFor="track-phone">Telefone de contato</label>
+                <input
+                  id="track-phone"
+                  className={styles.searchInput}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel-national"
+                  placeholder="(00) 00000-0000"
+                  maxLength={15}
+                  value={phone}
+                  onChange={e => setPhone(applyPhoneMask(e.target.value))}
+                  onKeyDown={onEnter}
+                />
+                <span className={styles.hint}>Usamos o telefone do cadastro para confirmar que o CPF é seu</span>
+              </div>
+            </div>
+          </div>
+
+          <TurnstileWidget ref={captchaRef} onToken={setCaptchaToken} className={styles.captcha}/>
+
+          <div className={styles.actions}>
+            <button className={`btn btn-primary ${styles.btnSearch}`} onClick={search} disabled={loading}>
+              {loading ? <span className="spinner spinner-sm"/> : <SearchIcon size={18}/>}
+              {loading ? 'Buscando…' : 'Buscar'}
+            </button>
+            <button className={`btn btn-secondary ${styles.btnClear}`} onClick={clear} disabled={loading}>
+              Limpar
             </button>
           </div>
-          <TurnstileWidget ref={captchaRef} onToken={setCaptchaToken} className={styles.captcha}/>
-          <button className={styles.btnClear} onClick={clear}>Limpar</button>
         </div>
       </div>
 
-      <section className={styles.results}>
+      <section className={styles.results} ref={resultsRef}>
         {uiState === 'empty' && (
           <div className={styles.emptyState}>
             <PackageSearchIcon size={100} color="var(--border-strong)"/>
@@ -246,18 +309,19 @@ export default function ComprasPage() {
         )}
         {uiState === 'no-results' && (
           <div className={styles.emptyState}>
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" strokeWidth="1.25" strokeLinecap="round">
-              <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
-            </svg>
+            <XCircleIcon size={80} className={styles.noResultsIcon}/>
             <h3>Nenhuma compra encontrada</h3>
             <p>Verifique os dados e tente novamente</p>
-            <button className={`btn btn-primary ${styles.retryBtn}`} onClick={clear}>Tentar novamente</button>
+            <button className={`btn btn-primary ${styles.retryBtn}`} onClick={retry}>Tentar novamente</button>
           </div>
         )}
         {uiState === 'results' && (
-          <div className={styles.grid}>
-            {orders.map((order, i) => <OrderCard key={i} order={order}/>)}
-          </div>
+          <>
+            <p className={styles.resultCount} role="status">{pluralPedidos(orders.length)}</p>
+            <div className={styles.grid}>
+              {orders.map((order, i) => <OrderCard key={i} order={order}/>)}
+            </div>
+          </>
         )}
       </section>
 
@@ -278,24 +342,42 @@ function OrderCard({ order }) {
             {order.statusText || 'Reservado'}
           </span>
         </div>
+        {order.date && <span className={styles.rowDate}>Pedido feito em {order.date}</span>}
         <div className={styles.rowInfo}>
           <span className={styles.rowProducts} title={productSummary}>{productSummary}</span>
-          <span className={styles.rowTotal}>R$ {order.total.toFixed(2)}</span>
+          <span className={styles.rowTotal}>{formatBRL(order.total)}</span>
         </div>
       </div>
 
-      {/* Etapas — stepper horizontal */}
-      <div className={styles.rowTimeline}>
-        {order.timeline.map((step, i) => (
-          <div
-            key={i}
-            className={`${styles.htStep} ${step.active ? styles.htActive : ''} ${step.cancelled ? styles.htCancelled : ''}`}
-          >
-            <div className={styles.htDot} />
-            <span className={styles.htLabel}>{step.step}</span>
+      {/* Etapas — stepper horizontal (ou aviso, se cancelado) */}
+      {order.cancelled ? (
+        <div className={styles.cancelledNote}>
+          <XCircleIcon size={22}/>
+          <div>
+            <strong>Pedido cancelado</strong>
+            <span>Se tiver alguma dúvida, fale com a gente pelos contatos abaixo</span>
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <ol className={styles.rowTimeline} aria-label="Etapas do pedido">
+          {order.timeline.map((step, i) => (
+            <li
+              key={i}
+              className={`${styles.htStep} ${step.active ? styles.htActive : ''}`}
+              aria-current={step.current ? 'step' : undefined}
+            >
+              <span className={styles.htDot} aria-hidden="true">
+                {step.active && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6 9 17l-5-5"/>
+                  </svg>
+                )}
+              </span>
+              <span className={styles.htLabel}>{step.step}</span>
+            </li>
+          ))}
+        </ol>
+      )}
     </article>
   );
 }
