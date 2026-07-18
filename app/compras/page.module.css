@@ -88,6 +88,8 @@
   gap: .75rem;
   margin-top: 1.25rem;
   flex-wrap: wrap;
+  /* centralizado no mesmo eixo do widget do captcha logo acima */
+  justify-content: center;
 }
 .btnSearch { flex: 1; max-width: 260px; }
 .btnSearch:disabled, .btnClear:disabled {
