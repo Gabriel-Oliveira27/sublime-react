@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { prisma } from '@/lib/prisma'
+import { getFreteCached, FRETE_ID, TAG_FRETE } from '@/lib/cache'
 import { exigirPermissao } from '@/lib/middleware'
 import { CORS_HEADERS, corsOptions } from '@/lib/cors'
-
-const FRETE_ID = 1
 
 // Defaults usados quando ainda não há FreteConfig no banco
 // Espelham o CONFIG.SHIPPING_TIERS atual para não quebrar quem ainda não configurou.
@@ -49,7 +49,7 @@ function serialize(f: any) {
 // ── GET — público (loja é same-origin; dashboard precisa de CORS com credenciais) ──
 export async function GET() {
   try {
-    const frete = await prisma.freteConfig.findUnique({ where: { id: FRETE_ID } })
+    const frete = await getFreteCached()
     const data  = frete ? serialize(frete) : defaultFrete()
     return NextResponse.json(data, {
       // CORS_HEADERS usa DASHBOARD_ORIGIN (variável de ambiente), não '*'.
@@ -113,6 +113,7 @@ export async function PATCH(req: NextRequest) {
       create: { id: FRETE_ID, ...data },
     })
 
+    revalidateTag(TAG_FRETE)
     return NextResponse.json(serialize(saved), { headers: CORS_HEADERS })
   } catch (err) {
     console.error('[PATCH /api/frete]', err)

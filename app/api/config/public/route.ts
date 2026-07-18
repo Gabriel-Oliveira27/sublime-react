@@ -1,26 +1,12 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getConfigPublicCached } from '@/lib/cache'
 
-const PUBLIC_KEYS = [
-  'WHATSAPP', 'PIX_KEY',
-  'PAGAMENTO_PIX', 'PAGAMENTO_CREDITO', 'PAGAMENTO_DINHEIRO',
-  'WHATSAPP_ATIVO',
-  'DESCONTO_GLOBAL',
-  'DESCONTO_LINHA_FREEZER', 'DESCONTO_LINHA_AQUECER', 'DESCONTO_LINHA_CONSERVAR',
-  'DESCONTO_LINHA_PREPARAR', 'DESCONTO_LINHA_SERVIR',  'DESCONTO_LINHA_ARMAZENAR',
-  'FRETE_MODELO', 'FRETE_FAIXAS', 'FRETE_CUSTO_KM', 'FRETE_GRATIS_ACIMA_KM',
-  'ORIGEM_ENDERECO', 'ORIGEM_LAT', 'ORIGEM_LON', 'ORIGEM_CEP',
-  'PIX_ONLINE_ATIVO', 'PIX_TAXA_MODO', 'PIX_TAXA_FIXA', 'PIX_TAXA_FAIXAS',
-  'PIX_TAXA_FRASE',
-  'RECEBIMENTO_ENTREGA', 'RECEBIMENTO_RETIRADA',
-  'RETIRADA_HORA_INICIO', 'RETIRADA_HORA_FIM',
-]
+// As chaves públicas (PUBLIC_CONFIG_KEYS) e a consulta cacheada moram em
+// lib/cache.ts — invalidação via revalidateTag(TAG_CONFIG) nas rotas de escrita.
 
 export async function GET() {
   try {
-    const configs = await prisma.config.findMany({
-      where: { chave: { in: PUBLIC_KEYS } },
-    })
+    const configs = await getConfigPublicCached()
     const m = Object.fromEntries(configs.map(c => [c.chave, c.valor]))
 
     return NextResponse.json({

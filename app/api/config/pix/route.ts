@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { prisma } from '@/lib/prisma'
+import { TAG_CONFIG } from '@/lib/cache'
 import { autenticar, exigirPermissao } from '@/lib/middleware'
 import { z } from 'zod'
 
@@ -40,6 +42,8 @@ export async function PATCH(req: NextRequest) {
       create: { chave: 'PIX_KEY', valor: parsed.data.chave },
     })
 
+    // PIX_KEY é uma das chaves públicas — invalida o cache da loja.
+    revalidateTag(TAG_CONFIG)
     return NextResponse.json({ chave: config.valor })
   } catch (err) {
     console.error('[PATCH /api/config/pix]', err)

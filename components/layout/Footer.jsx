@@ -1,17 +1,12 @@
 'use client';
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useConfig } from '@/context/ConfigContext';
 import styles from './Footer.module.css';
 
 export default function Footer() {
-  const [whatsapp, setWhatsapp] = useState('');
-
-  useEffect(() => {
-    fetch('/api/config/public')
-      .then(r => r.json())
-      .then(data => { if (data.whatsapp) setWhatsapp(data.whatsapp); })
-      .catch(() => {/* silencia — o footer continua funcionando sem o número */});
-  }, []);
+  // Número vem do ConfigContext — evita um segundo fetch de /api/config/public
+  // em cada página (o provider no layout raiz já busca uma vez).
+  const { whatsapp } = useConfig();
 
   // Formata "5588988568911" → "(88) 98856-8911" para exibição
   const displayPhone = (() => {

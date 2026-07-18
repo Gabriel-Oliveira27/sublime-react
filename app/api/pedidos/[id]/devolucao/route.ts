@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { prisma } from '@/lib/prisma'
+import { TAG_ESTOQUE } from '@/lib/cache'
 import { exigirPermissao } from '@/lib/middleware'
 import { CORS_HEADERS, corsOptions } from '@/lib/cors'
 
@@ -52,6 +54,9 @@ export async function POST(
 
       return tx.pedido.findUnique({ where: { id: idNum } })
     })
+
+    // Devolução restaurou quantidades — derruba o cache da vitrine.
+    revalidateTag(TAG_ESTOQUE)
 
     return NextResponse.json(
       { sucesso: true, pedido: pedidoAtualizado },

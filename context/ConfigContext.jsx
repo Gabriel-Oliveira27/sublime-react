@@ -15,6 +15,7 @@ const DEFAULT_FRETE = {
 };
 
 const DEFAULTS = {
+  whatsapp:        '',
   descontoGlobal:  0,
   descontoLinhas:  { FREEZER:0, AQUECER:0, CONSERVAR:0, PREPARAR:0, SERVIR:0, ARMAZENAR:0 },
   whatsappAtivo:     true,
@@ -39,6 +40,7 @@ export function ConfigProvider({ children }) {
       .then(r => r.json())
       .then(data => {
         setConfig({
+          whatsapp:       typeof data.whatsapp === 'string' ? data.whatsapp : '',
           descontoGlobal: clamp(parseInt(data.desconto_global) || 0),
           descontoLinhas: {
             FREEZER:   clamp(parseInt(data.desconto_linhas?.FREEZER)   || 0),
